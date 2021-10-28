@@ -29,11 +29,11 @@ files_and_buckets_and_tables:
         metadata: schema/dicom_metadata_curated_v4.json
         table_list:
           - idc-dev-etl.idc_v4.dicom_metadata
-#     - measurement_groups:
-#       sql: sql/measurement_groups.sql
-#       metadata: schema/measurement_groups.json
-#       table_list:
-#         - idc-dev-etl.idc_v4.dicom_metadata
+    - measurement_groups:
+       sql: sql/measurement_groups.sql
+       metadata: schema/measurement_groups.json
+       table_list:
+         - idc-dev-etl.idc_v4.dicom_metadata
     - qualitative_measurements:
        sql: sql/qualitative_measurements.sql
        metadata: schema/qualitative_measurements.json
