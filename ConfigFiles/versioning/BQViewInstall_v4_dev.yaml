@@ -17,13 +17,13 @@ files_and_buckets_and_tables:
 
   # For each view to install, what is the sql, json file with the schema and metadata, and table list for sql
   INSTALL_LIST:
-#    - dicom_all:
-#        sql: sql/dicom_all_v4.sql
-#        metadata: schema/dicom_all_v4.json
-#        table_list:
-#          - idc-dev-etl.idc_v4.auxiliary_metadata
-#          - idc-dev-etl.idc_v4.dicom_metadata
-#          - idc-dev-etl.idc_v4.original_collections_metadata
+    - dicom_all:
+        sql: sql/dicom_all_v4.sql
+        metadata: schema/dicom_all_v4.json
+        table_list:
+          - idc-dev-etl.idc_v4.auxiliary_metadata
+          - idc-dev-etl.idc_v4.dicom_metadata
+          - idc-dev-etl.idc_v4.original_collections_metadata
     - dicom_metadata_curated:
         sql: sql/dicom_metadata_curated_v4.sql
         metadata: schema/dicom_metadata_curated_v4.json
@@ -34,23 +34,23 @@ files_and_buckets_and_tables:
 #       metadata: schema/measurement_groups.json
 #       table_list:
 #         - idc-dev-etl.idc_v4.dicom_metadata
-#    - qualitative_measurements:
-#       sql: sql/qualitative_measurements.sql
-#       metadata: schema/qualitative_measurements.json
-#       table_list:
-#         - idc-dev-etl.idc_v4.measurement_groups
-#    - quantitative_measurements:
-#       sql: sql/quantitative_measurements.sql
-#       metadata: schema/quantitative_measurements.json
-#       table_list:
-#         - idc-dev-etl.idc_v4.measurement_groups
-#         - idc-dev-etl.idc_v4.measurement_groups
-#         - idc-dev-etl.idc_v4.measurement_groups
-#    - segmentations:
-#       sql: sql/segmentations.sql
-#       metadata: schema/segmentations.json
-#       table_list:
-#         - idc-dev-etl.idc_v4.dicom_metadata # Debug: idc-tcia.lidc_idri_seg_sr.lidc_idri_seg_sr
+    - qualitative_measurements:
+       sql: sql/qualitative_measurements.sql
+       metadata: schema/qualitative_measurements.json
+       table_list:
+         - idc-dev-etl.idc_v4.measurement_groups
+    - quantitative_measurements:
+       sql: sql/quantitative_measurements.sql
+       metadata: schema/quantitative_measurements.json
+       table_list:
+         - idc-dev-etl.idc_v4.measurement_groups
+         - idc-dev-etl.idc_v4.measurement_groups
+         - idc-dev-etl.idc_v4.measurement_groups
+    - segmentations:
+       sql: sql/segmentations.sql
+       metadata: schema/segmentations.json
+       table_list:
+         - idc-dev-etl.idc_v4.dicom_metadata # Debug: idc-tcia.lidc_idri_seg_sr.lidc_idri_seg_sr
 
 steps:
   # delete existing dataset, if present:
