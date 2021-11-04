@@ -7,6 +7,7 @@ WITH
     aux.collection_hash as collection_hash,
     aux.collection_init_idc_version AS collection_init_idc_version,
     aux.collection_revised_idc_version AS collection_revised_idc_version,
+    aux.access AS access,
     dcm.PatientID as PatientID,
     aux.idc_case_id as idc_case_id,
     aux.patient_hash as patient_hash,

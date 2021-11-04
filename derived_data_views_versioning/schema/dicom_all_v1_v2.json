@@ -26,147 +26,9 @@
         "type": "STRING"
       },
       {
-        "description": "The ID of the collection containing this instance as expected by the TCIA API",
-        "mode": "NULLABLE",
-        "name": "tcia_api_collection_id",
-        "type": "STRING"
-      },
-      {
         "description": "The ID of the collection containing this instance as expected by the IDC web app and API. This corresponds to the idc_web_collection_id column in the auxiliary_metadata table",
         "mode": "NULLABLE",
         "name": "collection_id",
-        "type": "STRING"
-      },
-      {
-        "description": "Date when the current version of the collection containing this instance was revised",
-        "mode": "NULLABLE",
-        "name": "collection_timestamp",
-        "type": "STRING"
-      },
-      {
-        "description": "md5 hash of the of this version of the collection containing this instance",
-        "mode": "NULLABLE",
-        "name": "collection_hash",
-        "type": "STRING"
-      },
-      {
-        "description": "The IDC version in which the collection containing this instance first appeared",
-        "mode": "NULLABLE",
-        "name": "collection_init_idc_version",
-        "type": "STRING"
-      },
-      {
-        "description": "The IDC version in which this version of the collection containing this instance first appeared",
-        "mode": "NULLABLE",
-        "name": "collection_revised_idc_version",
-        "type": "STRING"
-      },
-      {
-        "description": "Collection access status: Public or Limited",
-        "mode": "NULLABLE",
-        "name": "access",
-        "type": "STRING"
-      },
-      {
-        "description": "IDC assigned UUID4 id of this version of the case/patient containing this instance",
-        "mode": "NULLABLE",
-        "name": "idc_case_id",
-        "type": "STRING"
-      },
-      {
-        "description": "md5 hash of this version of the patient/case containing this instance",
-        "mode": "NULLABLE",
-        "name": "patient_hash",
-        "type": "STRING"
-      },
-      {
-        "description": "The IDC version in which the patient/case containing this instance first appeared",
-        "mode": "NULLABLE",
-        "name": "patient_init_idc_version",
-        "type": "STRING"
-      },
-      {
-        "description": "The IDC version in which this version of the patient/case containing this instance first appeared",
-        "mode": "NULLABLE",
-        "name": "patient_revised_idc_version",
-        "type": "STRING"
-      },
-      {
-        "description": "UUID of this version of study containing this instance",
-        "mode": "NULLABLE",
-        "name": "crdc_study_uuid",
-        "type": "STRING"
-      },
-      {
-        "description": "md5 hash of the data in the this version of the study containing this instance",
-        "mode": "NULLABLE",
-        "name": "study_hash",
-        "type": "STRING"
-      },
-      {
-        "description": "The IDC version in which the study containing this instance first appeared",
-        "mode": "NULLABLE",
-        "name": "study_init_idc_version",
-        "type": "STRING"
-      },
-      {
-        "description": "The IDC version in which this version of the study containing this instance first appeared",
-        "mode": "NULLABLE",
-        "name": "study_revised_idc_version",
-        "type": "STRING"
-      },
-      {
-        "description": "UUID of this version of series containing this instance",
-        "mode": "NULLABLE",
-        "name": "crdc_series_uuid",
-        "type": "STRING"
-      },
-      {
-        "description": "md5 hash of the data in the this version of the series containing this instance",
-        "mode": "NULLABLE",
-        "name": "series_hash",
-        "type": "STRING"
-      },
-      {
-        "description": "The IDC version in which the series containing this instance first appeared",
-        "mode": "NULLABLE",
-        "name": "series_init_idc_version",
-        "type": "STRING"
-      },
-      {
-        "description": "The IDC version in which this version of the series containing this instance first appeared",
-        "mode": "NULLABLE",
-        "name": "series_revised_idc_version",
-        "type": "STRING"
-      },
-      {
-        "description": "UUID of this version of this instance",
-        "mode": "NULLABLE",
-        "name": "crdc_instance_uuid",
-        "type": "STRING"
-      },
-      {
-        "description": "md5 hash of the data in the this version of this instance",
-        "mode": "NULLABLE",
-        "name": "instance_hash",
-        "type": "STRING"
-      },
-      {
-        "description": "Size in bytes of this version of this instance",
-        "mode": "NULLABLE",
-        "name": "instance_size",
-        "type": "STRING"
-      },
-      {
-        "description": "The IDC version in which this instance first appeared",
-        "mode": "NULLABLE",
-        "name": "instance_init_idc_version",
-        "type": "STRING"
-      },
-      {
-        "description": "The IDC version in which this instance first appeared",
-        "mode": "NULLABLE",
-        "name": "instance_revised_idc_version",
         "type": "STRING"
       },
       {
@@ -176,27 +38,81 @@
         "type": "STRING"
       },
       {
-        "description": "The DOI of the TCIA wiki page that describes the original collection or analysis result that containing this instance",
+        "description": "Bucket that contains the current version of this instance in Google Cloud Storage (GCS)",
+        "mode": "NULLABLE",
+        "name": "gcs_bucket",
+        "type": "STRING"
+      },
+      {
+        "description": "Indicates whether the instance has Public or Limited access",
+        "mode": "NULLABLE",
+        "name": "access",
+        "type": "STRING"
+      },
+      {
+        "description": "IDC assigned UUID of this version of study containing this instance",
+        "mode": "NULLABLE",
+        "name": "crdc_study_uuid",
+        "type": "STRING"
+      },
+      {
+        "description": "IDC assigned UUID of this version of series containing this instance",
+        "mode": "NULLABLE",
+        "name": "crdc_series_uuid",
+        "type": "STRING"
+      },
+      {
+        "description": "IDC assigned UUID of this instance",
+        "mode": "NULLABLE",
+        "name": "crdc_instance_uuid",
+        "type": "STRING"
+      },
+      {
+        "description": "IDC assigned UUID4 id of this version of the case/patient containing this instance",
+        "mode": "NULLABLE",
+        "name": "idc_case_id",
+        "type": "STRING"
+      },
+      {
+        "description": "Size in bytes of this version of this instance",
+        "mode": "NULLABLE",
+        "name": "instance_size",
+        "type": "STRING"
+      },
+      {
+        "description": "md5 hash of the of this version of the collection containing this instance",
+        "mode": "NULLABLE",
+        "name": "collection_hash",
+        "type": "STRING"
+      },
+      {
+        "description": "md5 hash of this version of the patient/case containing this instance",
+        "mode": "NULLABLE",
+        "name": "patient_hash",
+        "type": "STRING"
+      },
+      {
+        "description": "md5 hash of the data in the this version of the study containing this instance",
+        "mode": "NULLABLE",
+        "name": "study_hash",
+        "type": "STRING"
+      },
+      {
+        "description": "md5 hash of the data in the this version of the series containing this instance",
+        "mode": "NULLABLE",
+        "name": "series_hash",
+        "type": "STRING"
+      },
+      {
+        "description": "md5 hash of the data in the this version of this instance",
+        "mode": "NULLABLE",
+        "name": "instance_hash",
+        "type": "STRING"
+      },
+      {
+        "description": "The DOI of the TCIA wiki page that describes the original collection or analysis result that con",
         "mode": "NULLABLE",
         "name": "Source_DOI",
-        "type": "STRING"
-      },
-      {
-        "description": "The URL to the page describing the license of the collection that contains this instance",
-        "mode": "NULLABLE",
-        "name": "license_url",
-        "type": "STRING"
-      },
-      {
-        "description": "The long name of the license of the collection that contains this instance",
-        "mode": "NULLABLE",
-        "name": "license_long_name",
-        "type": "STRING"
-      },
-      {
-        "description": "The short name of the license of the collection that contains this instance",
-        "mode": "NULLABLE",
-        "name": "license_short_name",
         "type": "STRING"
       },
       {
