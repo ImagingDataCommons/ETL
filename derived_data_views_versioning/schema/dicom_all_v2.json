@@ -44,12 +44,6 @@
         "type": "STRING"
       },
       {
-        "description": "Indicates whether the instance has Public or Limited access",
-        "mode": "NULLABLE",
-        "name": "access",
-        "type": "STRING"
-      },
-      {
         "description": "IDC assigned UUID of this version of study containing this instance",
         "mode": "NULLABLE",
         "name": "crdc_study_uuid",

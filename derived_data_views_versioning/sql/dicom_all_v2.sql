@@ -4,7 +4,6 @@ WITH
     aux.idc_webapp_collection_id AS collection_id,
     aux.gcs_url as gcs_url,
     aux.gcs_bucket as gcs_bucket,
-    aux.access as access,
     aux.study_uuid as crdc_study_uuid,
     aux.series_uuid as crdc_series_uuid,
     aux.instance_uuid as crdc_instance_uuid,
