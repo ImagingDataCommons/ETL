@@ -6,6 +6,38 @@ import numpy as np
 #from openpyxl import Workbook, load_workbook
 from os import path
 
+def write_dataframe_to_json(path,coll,clinJson):
+  df=clinJson[coll]['df']
+  headers = clinJson[coll]['headers']
+  filenm=path+coll+'.json'
+  schemafilenm = path+coll+'.csv'
+  f = open(filenm, 'w')
+  cols=list(df.columns)
+  nArr = []
+  for i in range(len(cols)):
+    col=df.columns[i]
+    dtype=df.dtypes[i].name
+    ntype=''
+    if dtype=='object':
+      ntype='str'
+    elif dtype=='float64':
+      ntype='float'
+    elif dtype=='Int64':
+      ntype='int'
+    elif dtype == 'datetime64[ns]':
+      ntype='datetime'
+      df[df.columns[i]] = df[df.columns[i]].astype(str)
+    nArr.append([col, ntype])
+  data = [{**row.dropna().to_dict()} for index, row in df.iterrows()]
+  out={'schema':nArr, 'data':data}
+  try:
+    json.dump(out,f)
+  except:
+    pass
+  i=1
+  f.close()
+
+
 def read_clin_file(filenm):
   f =open(filenm,'r')
   clinJson=json.load(f)
@@ -20,7 +52,38 @@ def write_clin_file(filenm, data):
     json.dump(ndata, f)
     f.close()
 
-#def analyzeDataFrame(df, ptId):
+def recastDataFrameTypes(df, ptId):
+  for i in range(len(df.columns)):
+    if not (i == ptId) and (df.dtypes[i].name == 'float64'):
+      try:
+        df[df.columns[i]] = df[df.columns[i]].astype('Int64')
+      except:
+        pass
+    # make all not na objects strings
+    if (df.dtypes[i].name == 'object'):
+      try:
+        df[df.columns[i]] = df[df.columns[i]].map(lambda a: a if pd.isna(a) else str(a))
+      except:
+        ii=1
+      ii=1
+
+def analyzeDataFrame(clinJson,coll):
+  df = clinJson[coll]['df']
+  ptIdSeq = clinJson[coll]['ptIdSeq'][0][0][0]
+  for i in range(len(df.columns)):
+    try:
+      uVals = list(df[df.columns[i]].dropna().unique())
+    except:
+      ii=1
+    try:
+      uVals.sort()
+    except:
+      ii = 1
+    clinJson[coll]['headers'][df.columns[i]]['uniques']=uVals
+    if (df.dtypes[i].name == 'float64') or (df.dtypes[i].name == 'Int64'):
+      if (len(uVals)>0):
+        clinJson[coll]['headers'][df.columns[i]]['rng']=[float(uVals[0]),float(uVals[len(uVals)-1])]
+
 
 
 
@@ -29,9 +92,11 @@ def processSrc(fpath, colName, srcInfo):
   filenm = fpath+colName+'/'+srcInfo['filenm']
   sheetNo = (0 if not 'sheet' in srcInfo else srcInfo['sheet'])
   patientIdRow = (0 if not ('patientIdRow') in srcInfo else srcInfo['patientIdRow'])
-  cols = ([0] if not 'headcols' in srcInfo else srcInfo['headcols'])
-  skip = (None if not 'skipRows' in srcInfo else srcInfo['skipRows'])
+  rows = ([0] if not 'headrows' in srcInfo else srcInfo['headrows'])
+  skipRows = (None if not 'skipRows' in srcInfo else srcInfo['skipRows'])
+  skipCols = (None if not 'skipCols' in srcInfo else srcInfo['skipCols'])
   pivot= (False if not 'pivot' in srcInfo else srcInfo['pivot'])
+  maxRow = (-1 if not 'maxRow' in srcInfo else srcInfo['maxRow'])
   extension = path.splitext(filenm)[1]
   engine='xlrd'
   if extension == '.xlsx':
@@ -45,35 +110,41 @@ def processSrc(fpath, colName, srcInfo):
     df = pd.read_excel(filenm, engine=engine, sheet_name=sheetNo)
   if pivot:
     df = df.T
-    cols =[cols[i]+1 for i in range(len(cols))]
+    rows =[rows[i]+1 for i in range(len(rows))]
     colList=list(df.columns)
     df.insert(0,'tmp',list(df.index))
+
+  if skipCols is not None:
+    df.drop(columns=[df.columns[i] for i in skipCols],inplace=True)
 
   for i in range(len(df.columns)):
     attrs.append([])
 
-  for i in range(len(cols)):
+  for i in range(len(rows)):
     colVal=''
-    ind = cols[i]
+    ind = rows[i]
     if ind == 0:
       values = df.columns
     else:
       values=df.values[ind-1]
     for j in range(len(values)):
       val=values[j]
-      if (i == len(cols)-1) or (not (str(val) == 'nan') and not ('Unnamed:' in str(colVal))):
+      if (i == len(rows)-1) or (not (str(val) == 'nan') and not ('Unnamed:' in str(colVal))):
         colVal=val
-      if (i < (len(cols)-1)) or (not (str(colVal) == 'nan') and not ('Unnamed:' in str(colVal))):
+      if (i < (len(rows)-1)) or (not (str(colVal) == 'nan') and not ('Unnamed:' in str(colVal))):
         attrs[j].append(colVal)
 
-  drcols=[i-1 for i in cols]
-  if skip is not None:
-    skip = [skip[i]-1 for i in range(len(skip))]
-    drcols =drcols+skip
+  drrows=[i-1 for i in rows]
+  if skipRows is not None:
+    skipRows = [skipRows[i]-1 for i in range(len(skipRows))]
+    drrows =drrows+skipRows
 
-  if -1 in drcols:
-    drcols.remove(-1)
-  df.drop(df.index[drcols], inplace=True)
+  if maxRow>-1:
+    drrows=drrows+[i for i in range(maxRow,len(list(df.index)))]
+  if -1 in drrows:
+    drrows.remove(-1)
+  df.drop(df.index[drrows], inplace=True)
+
 
   i=1
   headers = renameHeader(attrs)
@@ -219,6 +290,48 @@ def mergeAcrossBatch(clinJson,coll,ptRowIds,attrSetInd):
   clinJson[coll]['mergeBatch'][attrSetInd]['cList'] = cList
   clinJson[coll]['mergeBatch'][attrSetInd]['df'] = df_all_rows
 
+def export_meta_to_json(clinJson,filenm):
+  metaArr=[]
+  for coll in clinJson:
+    if 'ptIdSeq' in clinJson[coll]:
+      curDic=clinJson[coll]
+      curDf=clinJson[coll]['df']
+      dtypeL=list(curDf.dtypes)
+      ptId=curDic['ptIdSeq'][0][0][0]
+      for i in range(len(curDf.columns)):
+        ndic = {}
+        ndic['collection'] = coll
+        header = curDf.columns[i]
+        headerD = curDic['headers'][header]
+        dftype=str(dtypeL[i].name)
+        try:
+          ndic['sources'] = headerD['srcs']
+        except:
+          pass
+        if dftype=='Object':
+          dftype = 'String'
+        ndic['variable_name']=str(header)
+        ndic['column_number']=i
+        ndic['data_type']=dftype
+        if 'uniques' in headerD:
+          ndic['num_values']=len(headerD['uniques'])
+          if (ndic['num_values']<21):
+            #ndic['uniques'] = headerD['uniques']
+            ndic['values']=[]
+            for val in headerD['uniques']:
+              ndic['values'].append({'option_value':str(val)})
+        if 'rng' in headerD:
+          ndic['rng'] = headerD['rng']
+        metaArr.append(ndic)
+
+  f = open(filenm, 'w')
+  json.dump(metaArr, f)
+  f.close()
+
+        
+
+
+
 
 if __name__=="__main__":
   clinJson =read_clin_file('/Users/george/fed/actcianable/output/clinical_notes.json')
@@ -255,6 +368,13 @@ if __name__=="__main__":
           mergeAcrossBatch(clinJson,coll,ptRowIds,attrSetInd)
       if not wJson:
         mergeAcrossAttr(clinJson,coll)
+        i=1
+        recastDataFrameTypes(clinJson[coll]['df'], clinJson[coll]['ptIdSeq'][0][0][0])
+        analyzeDataFrame(clinJson,coll)
+        i=1
+        write_dataframe_to_json('./clin/',coll,clinJson)
+
   #write_clin_file('./clinical_out.json',clinJson)
+  export_meta_to_json(clinJson,'./clinical_meta_out.json')
   i=1
 
