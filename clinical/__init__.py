@@ -2,6 +2,7 @@ import json
 import re
 import pandas as pd
 import numpy as np
+import re
 #import xlrd
 #from openpyxl import Workbook, load_workbook
 from os import path
@@ -186,6 +187,7 @@ def processSrc(fpath, colName, srcInfo):
   return [headerSet,df]
 
 def renameHeader(attrs):
+  patt=re.compile(r"[a-z,A-Z,_,0-9]")
   headcols=[]
   for i in range(len(attrs)):
     headSet=attrs[i]
@@ -193,7 +195,11 @@ def renameHeader(attrs):
     header=header.replace('/','_')
     header=header.replace('-', '_')
     header=header.replace(' ', '_')
-    headcols.append(header)
+    normHeader = ''
+    for i in range(len(header)):
+      if bool(patt.search(header[i])):
+        normHeader = normHeader + header[i]
+    headcols.append(normHeader)
   return headcols
 
 def mergeAcrossAttr(clinJson, coll):
