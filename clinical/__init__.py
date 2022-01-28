@@ -187,7 +187,7 @@ def processSrc(fpath, colName, srcInfo):
   return [headerSet,df]
 
 def renameHeader(attrs):
-  patt=re.compile(r"[a-z,A-Z,_,0-9]")
+  patt=re.compile(r"[a-zA-Z_0-9]")
   headcols=[]
   for i in range(len(attrs)):
     headSet=attrs[i]
