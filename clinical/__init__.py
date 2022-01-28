@@ -10,7 +10,9 @@ from os import path
 def write_dataframe_to_json(path,coll,clinJson):
   df=clinJson[coll]['df']
   headers = clinJson[coll]['headers']
-  filenm=path+coll+'.json'
+  clinJson[coll]['table_name']=formatForBQ([[coll]])[0]
+
+  filenm=path+clinJson[coll]['table_name']+'.json'
   schemafilenm = path+coll+'.csv'
   f = open(filenm, 'w')
   cols=list(df.columns)
@@ -148,7 +150,7 @@ def processSrc(fpath, colName, srcInfo):
 
 
   i=1
-  headers = renameHeader(attrs)
+  headers = formatForBQ(attrs)
   df.columns=headers
   df.index=list(df.iloc[:,patientIdRow])
 
@@ -186,7 +188,7 @@ def processSrc(fpath, colName, srcInfo):
     df[df.columns[patientIdRow]] = df[df.columns[patientIdRow]].astype('str')
   return [headerSet,df]
 
-def renameHeader(attrs):
+def formatForBQ(attrs):
   patt=re.compile(r"[a-zA-Z_0-9]")
   headcols=[]
   for i in range(len(attrs)):
@@ -304,19 +306,27 @@ def export_meta_to_json(clinJson,filenm):
       curDf=clinJson[coll]['df']
       dtypeL=list(curDf.dtypes)
       ptId=curDic['ptIdSeq'][0][0][0]
+      table_name=curDic['table_name']
       for i in range(len(curDf.columns)):
         ndic = {}
+        if (i == ptId):
+          ndic['case_col']='yes'
+        else:
+          ndic['case_col'] = 'no'
         ndic['collection'] = coll
+        ndic['table_name'] = table_name
         header = curDf.columns[i]
         headerD = curDic['headers'][header]
         dftype=str(dtypeL[i].name)
         try:
           ndic['sources'] = headerD['srcs']
+          ndic['variable_label']=headerD['srcs'][0][0]['attrs'][len(headerD['srcs'][0][0]['attrs'])-1]
         except:
           pass
         if dftype=='Object':
           dftype = 'String'
         ndic['variable_name']=str(header)
+        #ndic['variable_label']=str(headerD)
         ndic['column_number']=i
         ndic['data_type']=dftype
         if 'uniques' in headerD:
