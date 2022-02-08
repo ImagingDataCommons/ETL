@@ -10,7 +10,6 @@ def write_dataframe_to_json(path,coll,clinJson):
   df=clinJson[coll]['df']
   headers = clinJson[coll]['headers']
   clinJson[coll]['table_name']=formatForBQ([[coll]])[0]
-
   filenm=path+clinJson[coll]['table_name']+'.json'
   schemafilenm = path+coll+'.csv'
   f = open(filenm, 'w')
@@ -66,8 +65,7 @@ def recastDataFrameTypes(df, ptId):
       try:
         df[df.columns[i]] = df[df.columns[i]].map(lambda a: a if pd.isna(a) else str(a))
       except:
-        ii=1
-      ii=1
+        pass
 
 def analyzeDataFrame(clinJson,coll):
   df = clinJson[coll]['df']
@@ -85,9 +83,6 @@ def analyzeDataFrame(clinJson,coll):
     if (df.dtypes[i].name == 'float64') or (df.dtypes[i].name == 'Int64'):
       if (len(uVals)>0):
         clinJson[coll]['headers'][df.columns[i]]['rng']=[float(uVals[0]),float(uVals[len(uVals)-1])]
-
-
-
 
 def processSrc(fpath, colName, srcInfo):
   attrs=[]
@@ -146,9 +141,6 @@ def processSrc(fpath, colName, srcInfo):
   if -1 in drrows:
     drrows.remove(-1)
   df.drop(df.index[drrows], inplace=True)
-
-
-  i=1
   headers = formatForBQ(attrs,lc=True)
   df.columns=headers
   df.index=list(df.iloc[:,patientIdRow])
@@ -177,10 +169,7 @@ def processSrc(fpath, colName, srcInfo):
             addVal =  df.iloc[i][colInd]
             #df_new.loc[curInd, list(df.columns)[colInd]]=10
             df_new.loc[curInd, list(df.columns)[colInd]]=str(curVal)+", "+str(addVal)
-            kk=1
-
     df = pd.concat([df_new])
-
   try:
     df[df.columns[patientIdRow]] = df[df.columns[patientIdRow]].astype('Int64')
   except:
@@ -243,7 +232,6 @@ def mergeAcrossAttr(clinJson, coll):
       except:
         print("could not concate! " + coll)
 
-  k=1
   clinJson[coll]['headers'] = headers
   clinJson[coll]['ptIdSeq'] = ptIdSeq
   clinJson[coll]['df'] = new_df
@@ -292,9 +280,7 @@ def mergeAcrossBatch(clinJson,coll,ptRowIds,attrSetInd):
         clinJson[coll]['mergeBatch'][attrSetInd]['headers'][ckey][curInd]['sheet'] = clinJson[coll]['srcs'][attrSetInd][batchSetInd]['sheet']
 
     #join data frames
-
     new_df = clinJson[coll]['cols'][attrSetInd][batchSetInd]['df']
-
     #make sure joining df is using the same patientId column name as the original
     colList=list(new_df.columns)
     colList[ptRowIds[batchSetInd]] = ptRow
@@ -349,10 +335,6 @@ def export_meta_to_json(clinJson,filenm):
   json.dump(metaArr, f)
   f.close()
 
-        
-
-
-
 
 if __name__=="__main__":
   notes_path=sys.argv[1]
@@ -380,7 +362,7 @@ if __name__=="__main__":
           ptRowIds.append(patientIdRow)
           print("strcInfo "+ str(srcInfo))
           if not ('type' in srcInfo) or not (srcInfo['type'] == 'json'):
-            [headers,df] = processSrc('/Users/george/fed/actcianable/output/clinical_files/',coll,srcInfo)
+            [headers,df] = processSrc(notes_path+'clinical_files/',coll,srcInfo)
             #attrs.append([attr])
             clinJson[coll]['cols'][attrSetInd][batchSetInd]['headers'] = headers
             clinJson[coll]['cols'][attrSetInd][batchSetInd]['df'] = df
