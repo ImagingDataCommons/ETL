@@ -3,8 +3,7 @@ import re
 import pandas as pd
 import numpy as np
 import re
-#import xlrd
-#from openpyxl import Workbook, load_workbook
+import sys
 from os import path
 
 def write_dataframe_to_json(path,coll,clinJson):
@@ -150,7 +149,7 @@ def processSrc(fpath, colName, srcInfo):
 
 
   i=1
-  headers = formatForBQ(attrs)
+  headers = formatForBQ(attrs,lc=True)
   df.columns=headers
   df.index=list(df.iloc[:,patientIdRow])
 
@@ -188,8 +187,9 @@ def processSrc(fpath, colName, srcInfo):
     df[df.columns[patientIdRow]] = df[df.columns[patientIdRow]].astype('str')
   return [headerSet,df]
 
-def formatForBQ(attrs):
+def formatForBQ(attrs, lc=False):
   patt=re.compile(r"[a-zA-Z_0-9]")
+  justNum=re.compile(r"[0-9]")
   headcols=[]
   for i in range(len(attrs)):
     headSet=attrs[i]
@@ -201,6 +201,11 @@ def formatForBQ(attrs):
     for i in range(len(header)):
       if bool(patt.search(header[i])):
         normHeader = normHeader + header[i]
+    if (len(normHeader) > 0) and bool(justNum.search(normHeader[0])):
+      normHeader='c_'+normHeader
+    if lc:
+      normHeader = normHeader.lower()
+
     headcols.append(normHeader)
   return headcols
 
@@ -350,7 +355,8 @@ def export_meta_to_json(clinJson,filenm):
 
 
 if __name__=="__main__":
-  clinJson =read_clin_file('/Users/george/fed/actcianable/output/clinical_notes.json')
+  notes_path=sys.argv[0]
+  clinJson =read_clin_file(notes_path+'clinical_notes.json')
   i=1
   collec=list(clinJson.keys())
   collec.sort()
@@ -390,7 +396,6 @@ if __name__=="__main__":
         i=1
         write_dataframe_to_json('./clin/',coll,clinJson)
 
-  #write_clin_file('./clinical_out.json',clinJson)
   export_meta_to_json(clinJson,'./clinical_meta_out.json')
   i=1
 
