@@ -355,7 +355,7 @@ def export_meta_to_json(clinJson,filenm):
 
 
 if __name__=="__main__":
-  notes_path=sys.argv[0]
+  notes_path=sys.argv[1]
   clinJson =read_clin_file(notes_path+'clinical_notes.json')
   i=1
   collec=list(clinJson.keys())
@@ -397,5 +397,4 @@ if __name__=="__main__":
         write_dataframe_to_json('./clin/',coll,clinJson)
 
   export_meta_to_json(clinJson,'./clinical_meta_out.json')
-  i=1
 
