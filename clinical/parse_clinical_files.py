@@ -5,6 +5,7 @@ import numpy as np
 import re
 import sys
 from os import path
+import zipfile
 
 def write_dataframe_to_json(path,coll,clinJson):
   df=clinJson[coll]['df']
@@ -347,6 +348,11 @@ if __name__=="__main__":
   for colInd in range(len(collec)):
     coll=collec[colInd]
     #attrs[coll]={}
+    if 'uzip' in clinJson[coll]:
+      zpfile = notes_path +'clinical_files/'+ coll + '/' + clinJson[coll]['uzip']
+      with zipfile.ZipFile(zpfile) as zip_ref:
+        zip_ref.extractall(notes_path + 'clinical_files/' + coll)
+
     if 'srcs' in clinJson[coll]:
       clinJson[coll]['cols']=[]
       for attrSetInd in range(len(clinJson[coll]['srcs'])):
