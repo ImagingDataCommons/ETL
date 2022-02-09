@@ -2,6 +2,7 @@ from google.cloud import bigquery
 import json
 from os import listdir
 from os.path import isfile,join,splitext
+import sys
 
 
 def create_meta_table(project, dataset):
@@ -9,8 +10,8 @@ def create_meta_table(project, dataset):
   client = bigquery.Client()
 
   # TODO(developer): Set table_id to the ID of the table to create.
-  dataset_id= "idc-dev-etl.clinical"
-  table_id = "idc-dev-etl.clinical.clinical_meta"
+  dataset_id= project+"."+dataset
+  table_id = dataset_id+".clinical_meta"
 
   schema = [
             bigquery.SchemaField("collection","STRING"),
@@ -32,9 +33,10 @@ def create_meta_table(project, dataset):
            bigquery.SchemaField("rng","STRING") 
            ] 
   
-  #dataset=bigquery.Dataset(dataset_id)
-  #dataset.location='US'
-  #dataset = client.create_dataset(dataset, timeout=60)
+  dataset=bigquery.Dataset(dataset_id)
+  dataset.location='US'
+  client,delete_dataset(dataset_id, delete_contents=True, not_found_ok=True)
+  dataset = client.create_dataset(dataset, timeout=60)
   client.delete_table(table_id,not_found_ok=True)
   table = bigquery.Table(table_id, schema=schema)
   client.create_table(table)
@@ -57,7 +59,7 @@ def load_meta(filenm):
     job=client.load_table_from_json(metaD, table, job_config=job_config)
     print(job.result())
 
-def load_clin_files(cpath):
+def load_clin_files(project, dataset,cpath):
   client = bigquery.Client()   
   ofiles = [f for f in listdir(cpath) if isfile(join(cpath,f))]
   kk=0
@@ -73,7 +75,7 @@ def load_clin_files(cpath):
 
     file_ext = splitext(ofile)[1]
     if file_ext=='.json':
-      table_id ="idc-dev-etl.clinical."+collec+"_clinical"
+      table_id =project+"."+dataset+"."+collec+"_clinical"
       #print(table_id)
       job_config= bigquery.LoadJobConfig(source_format=bigquery.SourceFormat.NEWLINE_DELIMITED_JSON)
       schema=[]
@@ -96,11 +98,14 @@ def load_clin_files(cpath):
       job= client.load_table_from_json(cdata, table, job_config=job_config)    
       print(job.result())
     
+def load_all(project,dataset):
+  create_meta_table(project, dataset)
+  #load_meta(project,dataset,"./clinical_meta_out.json")
+  #load_clin_files(project,dataset,"./clin/")
 
 
 if __name__=="__main__":
-  project=sys.argv[0]
-  dataset=sys.argv[1]
-  create_meta_table(project, dataset)  
-  load_meta(project,dataset,"./clinical_meta_out.json")
-  load_clin_files(project,dataset"./clin/")
+  project=sys.argv[1]
+  dataset=sys.argv[2]
+  load_all(project,dataset)
+
