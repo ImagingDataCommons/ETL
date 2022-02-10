@@ -378,10 +378,8 @@ if __name__=="__main__":
           mergeAcrossBatch(clinJson,coll,ptRowIds,attrSetInd)
       if not wJson:
         mergeAcrossAttr(clinJson,coll)
-        i=1
         recastDataFrameTypes(clinJson[coll]['df'], clinJson[coll]['ptIdSeq'][0][0][0])
         analyzeDataFrame(clinJson,coll)
-        i=1
         write_dataframe_to_json('./clin/',coll,clinJson)
 
   export_meta_to_json(clinJson,'./clinical_meta_out.json')

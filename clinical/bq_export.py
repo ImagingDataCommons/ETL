@@ -6,10 +6,8 @@ import sys
 
 
 def create_meta_table(project, dataset):
-  # Construct a BigQuery client object.
-  client = bigquery.Client()
 
-  # TODO(developer): Set table_id to the ID of the table to create.
+  client = bigquery.Client(project=project)
   dataset_id= project+"."+dataset
   table_id = dataset_id+".clinical_meta"
 
@@ -35,15 +33,15 @@ def create_meta_table(project, dataset):
   
   dataset=bigquery.Dataset(dataset_id)
   dataset.location='US'
-  client,delete_dataset(dataset_id, delete_contents=True, not_found_ok=True)
-  dataset = client.create_dataset(dataset, timeout=60)
+  client.delete_dataset(dataset_id, delete_contents=True, not_found_ok=True)
+  dataset = client.create_dataset(dataset)
   client.delete_table(table_id,not_found_ok=True)
   table = bigquery.Table(table_id, schema=schema)
   client.create_table(table)
 
-def load_meta(filenm):
-  client = bigquery.Client()
-  table_id="idc-dev-etl.clinical.clinical_meta"
+def load_meta(project, dataset, filenm):
+  client = bigquery.Client(project=project)
+  table_id=project+"."+dataset+".clinical_meta"
   table=bigquery.Table(table_id)
 
   job_config = bigquery.LoadJobConfig(source_format=bigquery.SourceFormat.NEWLINE_DELIMITED_JSON)
@@ -60,14 +58,11 @@ def load_meta(filenm):
     print(job.result())
 
 def load_clin_files(project, dataset,cpath):
-  client = bigquery.Client()   
+  client = bigquery.Client(project=project)
   ofiles = [f for f in listdir(cpath) if isfile(join(cpath,f))]
-  kk=0
   for ofile in ofiles:
-    kk=kk+1
     cfile= join(cpath,ofile)
     collec = splitext(ofile)[0]
-
     collec=collec.replace('/','_')
     collec=collec.replace('-', '_')
     collec=collec.replace(' ', '_')
@@ -76,7 +71,6 @@ def load_clin_files(project, dataset,cpath):
     file_ext = splitext(ofile)[1]
     if file_ext=='.json':
       table_id =project+"."+dataset+"."+collec+"_clinical"
-      #print(table_id)
       job_config= bigquery.LoadJobConfig(source_format=bigquery.SourceFormat.NEWLINE_DELIMITED_JSON)
       schema=[]
       f=open(cfile,'r')
@@ -100,8 +94,8 @@ def load_clin_files(project, dataset,cpath):
     
 def load_all(project,dataset):
   create_meta_table(project, dataset)
-  #load_meta(project,dataset,"./clinical_meta_out.json")
-  #load_clin_files(project,dataset,"./clin/")
+  load_meta(project,dataset,"./clinical_meta_out.json")
+  load_clin_files(project,dataset,"./clin/")
 
 
 if __name__=="__main__":
