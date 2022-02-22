@@ -97,7 +97,7 @@ def load_clin_files(project, dataset,cpath,use_schema):
 def load_all(project,dataset,use_schema):
   create_meta_table(project, dataset)
   load_meta(project,dataset,"./clinical_meta_out.json")
-  load_clin_files(project,dataset,"./clin/")
+  load_clin_files(project,dataset,"./clin/",use_schema)
 
 
 if __name__=="__main__":
