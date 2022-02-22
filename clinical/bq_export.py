@@ -57,7 +57,7 @@ def load_meta(project, dataset, filenm):
     job=client.load_table_from_json(metaD, table, job_config=job_config)
     print(job.result())
 
-def load_clin_files(project, dataset,cpath):
+def load_clin_files(project, dataset,cpath,use_schema):
   client = bigquery.Client(project=project)
   ofiles = [f for f in listdir(cpath) if isfile(join(cpath,f))]
   for ofile in ofiles:
@@ -87,12 +87,14 @@ def load_clin_files(project, dataset,cpath):
         elif dtype == "float":
           colType="FLOAT"
         schema.append(bigquery.SchemaField(col,colType))
-      client.delete_table(table_id,not_found_ok=True) 
-      table=bigquery.Table(table_id, schema=schema)
+      client.delete_table(table_id,not_found_ok=True)
+      table=bigquery.Table(table_id)
+      if use_schema: 
+        table=bigquery.Table(table_id, schema=schema)
       job= client.load_table_from_json(cdata, table, job_config=job_config)    
       print(job.result())
     
-def load_all(project,dataset):
+def load_all(project,dataset,use_schema):
   create_meta_table(project, dataset)
   load_meta(project,dataset,"./clinical_meta_out.json")
   load_clin_files(project,dataset,"./clin/")
@@ -101,5 +103,6 @@ def load_all(project,dataset):
 if __name__=="__main__":
   project=sys.argv[1]
   dataset=sys.argv[2]
+  use_schema = sys.argv[3]
   load_all(project,dataset)
 
