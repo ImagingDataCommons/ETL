@@ -89,8 +89,8 @@ def load_clin_files(project, dataset,cpath,use_schema):
         schema.append(bigquery.SchemaField(col,colType))
       client.delete_table(table_id,not_found_ok=True)
       table=bigquery.Table(table_id)
-      if use_schema: 
-        table=bigquery.Table(table_id, schema=schema)
+      #if use_schema:
+      #  table=bigquery.Table(table_id, schema=schema)
       job= client.load_table_from_json(cdata, table, job_config=job_config)    
       print(job.result())
     
