@@ -104,5 +104,5 @@ if __name__=="__main__":
   project=sys.argv[1]
   dataset=sys.argv[2]
   use_schema = sys.argv[3]
-  load_all(project,dataset)
+  load_all(project,dataset,use_schema)
 
