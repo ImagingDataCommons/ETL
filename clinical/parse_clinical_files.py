@@ -1,3 +1,4 @@
+from google.cloud import bigquery
 import json
 import re
 import pandas as pd
@@ -6,13 +7,14 @@ import re
 import sys
 from os import path
 import zipfile
+#import copy.deepcopy
 
-def write_dataframe_to_json(path,coll,clinJson):
-  df=clinJson[coll]['df']
-  headers = clinJson[coll]['headers']
-  clinJson[coll]['table_name']=formatForBQ([[coll]])[0]
-  filenm=path+clinJson[coll]['table_name']+'.json'
-  schemafilenm = path+coll+'.csv'
+DEFAULT_SUFFIX='clinical'
+DEFAULT_DESCRIPTION='clinical data'
+
+def write_dataframe_to_json(path,nm,df):
+  #headers = clinJson[coll]['headers']
+  filenm=path+nm+'.json'
   f = open(filenm, 'w')
   cols=list(df.columns)
   nArr = []
@@ -24,10 +26,15 @@ def write_dataframe_to_json(path,coll,clinJson):
       ntype='str'
     elif dtype=='float64':
       ntype='float'
-    elif dtype=='Int64':
+    elif dtype=='int64':
       ntype='int'
     elif dtype == 'datetime64[ns]':
       ntype='datetime'
+      df[df.columns[i]] = df[df.columns[i]].astype(str)
+    elif dtype == 'bool':
+      ntype = 'bool'
+    else:
+      ntype = 'str'
       df[df.columns[i]] = df[df.columns[i]].astype(str)
     nArr.append([col, ntype])
   data = [{**row.dropna().to_dict()} for index, row in df.iterrows()]
@@ -36,7 +43,6 @@ def write_dataframe_to_json(path,coll,clinJson):
     json.dump(out,f)
   except:
     pass
-  i=1
   f.close()
 
 
@@ -68,22 +74,22 @@ def recastDataFrameTypes(df, ptId):
       except:
         pass
 
-def analyzeDataFrame(clinJson,coll):
-  df = clinJson[coll]['df']
-  ptIdSeq = clinJson[coll]['ptIdSeq'][0][0][0]
+def analyzeDataFrame(cdic):
+  df = cdic['df']
   for i in range(len(df.columns)):
     try:
       uVals = list(df[df.columns[i]].dropna().unique())
     except:
-      ii=1
+      pass
     try:
       uVals.sort()
     except:
-      ii = 1
-    clinJson[coll]['headers'][df.columns[i]]['uniques']=uVals
+      pass
+    cdic['headers'][df.columns[i]][0]['uniques']=uVals
     if (df.dtypes[i].name == 'float64') or (df.dtypes[i].name == 'Int64'):
       if (len(uVals)>0):
-        clinJson[coll]['headers'][df.columns[i]]['rng']=[float(uVals[0]),float(uVals[len(uVals)-1])]
+        cdic['headers'][df.columns[i]][0]['rng']=[float(uVals[0]),float(uVals[len(uVals)-1])]
+        iii=1
 
 def processSrc(fpath, colName, srcInfo):
   attrs=[]
@@ -293,44 +299,57 @@ def mergeAcrossBatch(clinJson,coll,ptRowIds,attrSetInd):
 def export_meta_to_json(clinJson,filenm):
   metaArr=[]
   for coll in clinJson:
-    if 'ptIdSeq' in clinJson[coll]:
-      curDic=clinJson[coll]
-      curDf=clinJson[coll]['df']
-      dtypeL=list(curDf.dtypes)
-      ptId=curDic['ptIdSeq'][0][0][0]
-      table_name=curDic['table_name']
-      for i in range(len(curDf.columns)):
-        ndic = {}
-        if (i == ptId):
-          ndic['case_col']='yes'
-        else:
-          ndic['case_col'] = 'no'
-        ndic['collection'] = coll
-        ndic['table_name'] = table_name
-        header = curDf.columns[i]
-        headerD = curDic['headers'][header]
-        dftype=str(dtypeL[i].name)
-        try:
-          ndic['sources'] = headerD['srcs']
-          ndic['variable_label']=headerD['srcs'][0][0]['attrs'][len(headerD['srcs'][0][0]['attrs'])-1]
-        except:
-          pass
-        if dftype=='Object':
-          dftype = 'String'
-        ndic['variable_name']=str(header)
-        #ndic['variable_label']=str(headerD)
-        ndic['column_number']=i
-        ndic['data_type']=dftype
-        if 'uniques' in headerD:
-          ndic['num_values']=len(headerD['uniques'])
-          if (ndic['num_values']<21):
-            #ndic['uniques'] = headerD['uniques']
-            ndic['values']=[]
-            for val in headerD['uniques']:
-              ndic['values'].append({'option_value':str(val)})
-        if 'rng' in headerD:
-          ndic['rng'] = headerD['rng']
-        metaArr.append(ndic)
+    if ('idc_webapp' in clinJson[coll]) and ('mergeBatch' in clinJson[coll]):
+      for k in range(len(clinJson[coll]['mergeBatch'])):
+        if 'ptId' in clinJson[coll]['mergeBatch'][k]:
+          curDic=clinJson[coll]['mergeBatch'][k]
+          curDf=clinJson[coll]['mergeBatch'][k]['df']
+          dtypeL=list(curDf.dtypes)
+          ptId=curDic['ptId'][0][0]
+
+          if 'tabletypes' in clinJson[coll]:
+            suffix=list(clinJson[coll]['tabletypes'][k])[0]
+            table_description = clinJson[coll]['tabletypes'][k][suffix]
+          else:
+            suffix=DEFAULT_SUFFIX
+            table_description=DEFAULT_DESCRIPTION
+          table_name=clinJson[coll]['idc_webapp']+'_'+suffix
+
+          for i in range(len(curDf.columns)):
+            ndic = {}
+            if (i == ptId):
+              ndic['case_col']='yes'
+            else:
+              ndic['case_col'] = 'no'
+            ndic['collection'] = coll
+            ndic['table_name'] = table_name
+            ndic['table_description'] = table_description
+            header = curDf.columns[i]
+            headerD = curDic['headers'][header][0]
+            dftype=str(dtypeL[i].name)
+            try:
+              #ndic['sources'] = headerD['srcs']
+              ndic['variable_label']=headerD['attrs'][len(headerD['attrs'])-1]
+            except:
+              pass
+            if dftype=='Object':
+              dftype = 'String'
+            ndic['variable_name']=str(header)
+            ndic['column_number']=i
+            ndic['data_type']=dftype
+            if 'uniques' in headerD:
+              ndic['num_values']=len(headerD['uniques'])
+              if (ndic['num_values']<21):
+                #ndic['uniques'] = headerD['uniques']
+                ndic['values']=[]
+                for val in headerD['uniques']:
+                  ndic['values'].append({'option_code':str(val)})
+              headerD.pop('uniques')
+            if 'rng' in headerD:
+              ndic['rng'] = headerD['rng']
+              headerD.pop('rng')
+            ndic['source'] = curDic['headers'][header]
+            metaArr.append(ndic)
 
   f = open(filenm, 'w')
   json.dump(metaArr, f)
@@ -340,14 +359,21 @@ def export_meta_to_json(clinJson,filenm):
 if __name__=="__main__":
   notes_path=sys.argv[1]
   clinJson =read_clin_file(notes_path+'clinical_notes.json')
-  i=1
   collec=list(clinJson.keys())
   collec.sort()
-  i=1
-  #attrs = {}
+  client = bigquery.Client()
+  query = "select tcia_wiki_collection_id, idc_webapp_collection_id from `canceridc-data.idc_current.original_collections_metadata`"
+  job = client.query(query)
+
+  for row in job.result():
+    wiki_collec=row['tcia_wiki_collection_id']
+    idc_webapp=row['idc_webapp_collection_id']
+    #print(row)
+    if wiki_collec in clinJson:
+      clinJson[wiki_collec]['idc_webapp'] = idc_webapp
+
   for colInd in range(len(collec)):
     coll=collec[colInd]
-    #attrs[coll]={}
     if 'uzip' in clinJson[coll]:
       zpfile = notes_path +'clinical_files/'+ coll + '/' + clinJson[coll]['uzip']
       with zipfile.ZipFile(zpfile) as zip_ref:
@@ -372,15 +398,24 @@ if __name__=="__main__":
             #attrs.append([attr])
             clinJson[coll]['cols'][attrSetInd][batchSetInd]['headers'] = headers
             clinJson[coll]['cols'][attrSetInd][batchSetInd]['df'] = df
+
           else:
             wJson = True
-        if not wJson:
+        if not wJson and 'idc_webapp' in clinJson[coll]:
           mergeAcrossBatch(clinJson,coll,ptRowIds,attrSetInd)
-      if not wJson:
+          recastDataFrameTypes(clinJson[coll]['mergeBatch'][attrSetInd]['df'],clinJson[coll]['mergeBatch'][attrSetInd]['ptId'][0][0])
+          analyzeDataFrame(clinJson[coll]['mergeBatch'][attrSetInd])
+          suffix=DEFAULT_SUFFIX
+          if 'tabletypes' in clinJson[coll]:
+            suffix=list(clinJson[coll]['tabletypes'][attrSetInd].keys())[0]
+          nm=clinJson[coll]['idc_webapp']+'_'+suffix
+          write_dataframe_to_json('./clin/', nm, clinJson[coll]['mergeBatch'][attrSetInd]['df'])
+      if not wJson and 'idc_webapp' in clinJson[coll]:
         mergeAcrossAttr(clinJson,coll)
-        recastDataFrameTypes(clinJson[coll]['df'], clinJson[coll]['ptIdSeq'][0][0][0])
-        analyzeDataFrame(clinJson,coll)
-        write_dataframe_to_json('./clin/',coll,clinJson)
+        #recastDataFrameTypes(clinJson[coll]['df'], clinJson[coll]['ptIdSeq'][0][0][0])
+        #analyzeDataFrame(clinJson[coll])
+        #write_dataframe_to_json('./clin/',coll,clinJson)
 
   export_meta_to_json(clinJson,'./clinical_meta_out.json')
+  i=1
 

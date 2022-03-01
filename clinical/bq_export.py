@@ -15,6 +15,7 @@ def create_meta_table(project, dataset):
             bigquery.SchemaField("collection","STRING"),
             bigquery.SchemaField("case_col","BOOLEAN"),
             bigquery.SchemaField("table_name","STRING"),
+            bigquery.SchemaField("table_description", "STRING"),
             bigquery.SchemaField("sources", "STRING"),
             bigquery.SchemaField("column_number","INTEGER"),
             bigquery.SchemaField("variable_name","STRING"),
@@ -23,9 +24,9 @@ def create_meta_table(project, dataset):
             bigquery.SchemaField("num_values","INTEGER"),
             bigquery.SchemaField("values", "RECORD", mode="REPEATED",
                 fields=[
-                  bigquery.SchemaField("option_value","STRING"),
+                  bigquery.SchemaField("option_code","STRING"),
                   bigquery.SchemaField("option_description","STRING"),
-                  bigquery.SchemaField("option_code","INTEGER")
+                  #bigquery.SchemaField("option_code","INTEGER")
              ],
             ),
            bigquery.SchemaField("rng","STRING") 
