@@ -12,16 +12,15 @@ def create_meta_table(project, dataset):
   table_id = dataset_id+".clinical_meta"
 
   schema = [
-            bigquery.SchemaField("collection","STRING"),
+            bigquery.SchemaField("collection_id","STRING"),
             bigquery.SchemaField("case_col","BOOLEAN"),
             bigquery.SchemaField("table_name","STRING"),
             bigquery.SchemaField("table_description", "STRING"),
-            bigquery.SchemaField("sources", "STRING"),
-            bigquery.SchemaField("column_number","INTEGER"),
             bigquery.SchemaField("variable_name","STRING"),
             bigquery.SchemaField("variable_label","STRING"),
             bigquery.SchemaField("data_type","STRING"),
-            bigquery.SchemaField("num_values","INTEGER"),
+            bigquery.SchemaField("original_column_headers","STRING", mode="REPEATED",
+                ),
             bigquery.SchemaField("values", "RECORD", mode="REPEATED",
                 fields=[
                   bigquery.SchemaField("option_code","STRING"),
@@ -29,7 +28,17 @@ def create_meta_table(project, dataset):
                   #bigquery.SchemaField("option_code","INTEGER")
              ],
             ),
-           bigquery.SchemaField("rng","STRING") 
+           bigquery.SchemaField("files", "RECORD", mode="REPEATED",
+               fields=[
+                   bigquery.SchemaField("name","STRING")
+                   ],
+               ),
+           bigquery.SchemaField("sheet_names","STRING",mode="REPEATED"),
+           bigquery.SchemaField("batch", "INTEGER",mode="REPEATED"),
+           bigquery.SchemaField("column_numbers", "INTEGER", mode="REPEATED"),
+           bigquery.SchemaField("project","STRING"),
+           bigquery.SchemaField("dataset","STRING")
+               
            ] 
   
   dataset=bigquery.Dataset(dataset_id)
@@ -51,27 +60,43 @@ def load_meta(project, dataset, filenm):
     f=open(filenm,'r')
     metaD=json.load(f)
     f.close()
-    for row in metaD:
-      row['sources']=json.dumps(row['sources'])
-      if 'rng' in row:
-          row['rng']=str(row['rng'])
+    #for row in metaD:
+      #row['source']=json.dumps(row['source'])
+      #if 'rng' in row:
+      #    row['rng']=str(row['rng'])
     job=client.load_table_from_json(metaD, table, job_config=job_config)
     print(job.result())
 
 def load_clin_files(project, dataset,cpath,use_schema):
   client = bigquery.Client(project=project)
   ofiles = [f for f in listdir(cpath) if isfile(join(cpath,f))]
+  dataset_created={}
   for ofile in ofiles:
     cfile= join(cpath,ofile)
     collec = splitext(ofile)[0]
-    collec=collec.replace('/','_')
-    collec=collec.replace('-', '_')
-    collec=collec.replace(' ', '_')
-    collec=collec.replace('_','')
-
     file_ext = splitext(ofile)[1]
+    print(collec+" "+file_ext)
+    if file_ext=='.csv':
+        rcollecSp=ofile[::-1].split('_',1)
+        dataset_nm=rcollecSp[1][::-1]
+        collec=rcollecSp[0][::-1].replace('.csv','')
+
+        if not dataset_nm in dataset_created:
+          dataset_id=project+"."+dataset_nm
+          cdataset = bigquery.Dataset(dataset_id)
+          cdataset.location='US'
+          client.delete_dataset(dataset_id,delete_contents=True,not_found_ok=True)
+          cdataset=client.create_dataset(cdataset)
+          dataset_created[dataset_nm]=1
+        table_id=project+"."+dataset_nm+"."+collec
+        job_config=bigquery.LoadJobConfig(autodetect=True,source_format=bigquery.SourceFormat.CSV)
+        print(cfile)
+        with open(cfile,'rb') as nfile:
+          job=client.load_table_from_file(nfile,table_id, job_config=job_config)
+          print(job.result())
+        nfile.close()   
     if file_ext=='.json':
-      table_id =project+"."+dataset+"."+collec+"_clinical"
+      table_id =project+"."+dataset+"."+collec
       job_config= bigquery.LoadJobConfig(source_format=bigquery.SourceFormat.NEWLINE_DELIMITED_JSON)
       schema=[]
       f=open(cfile,'r')
@@ -92,13 +117,14 @@ def load_clin_files(project, dataset,cpath,use_schema):
       table=bigquery.Table(table_id)
       #if use_schema:
       #  table=bigquery.Table(table_id, schema=schema)
+      job_config =bigquery.LoadJobConfig(source_format=bigquery.SourceFormat.NEWLINE_DELIMITED_JSON, schema=schema)
       job= client.load_table_from_json(cdata, table, job_config=job_config)    
       print(job.result())
     
 def load_all(project,dataset,use_schema):
-  create_meta_table(project, dataset)
-  load_meta(project,dataset,"./clinical_meta_out.json")
-  load_clin_files(project,dataset,"./clin/",use_schema)
+   create_meta_table(project, dataset)
+   load_meta(project,dataset,"./clinical_meta_out.json")
+   load_clin_files(project,dataset,"./clin/",use_schema)
 
 
 if __name__=="__main__":
