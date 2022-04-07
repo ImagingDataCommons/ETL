@@ -8,13 +8,13 @@
   "schema": {
     "fields": [
       {
-                "description": "TBD",
+        "description": "TBD",
         "mode": "NULLABLE",
         "name": "PatientID",
         "type": "STRING"
       },
       {
-                "description": "TBD",
+        "description": "TBD",
         "mode": "NULLABLE",
         "name": "SOPInstanceUID",
         "type": "STRING"

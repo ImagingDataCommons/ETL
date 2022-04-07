@@ -23,6 +23,7 @@ from json import loads as json_loads
 
 from google.cloud import bigquery
 from google.cloud.exceptions import NotFound
+from google.api_core.exceptions import NotFound
 
 '''
 ----------------------------------------------------------------------------------------------
@@ -190,7 +191,13 @@ Create a view in the target dataset
 def create_view(target_client, target_project, target_dataset, table_name, view_schema, view_sql):
 
     table_id = '{}.{}.{}'.format(target_project, target_dataset, table_name)
-    print(table_id)
+
+    print("Deleting {}".format(table_id))
+    try:
+        target_client.delete_table(table_id)
+    except NotFound:
+        print("View not found")
+    print("Creating {}".format(table_id))
 
     #
     # Convert the dictionary into the tree of SchemaField objects:
@@ -242,7 +249,7 @@ This allows you to e.g. skip previously run steps.
 
 def main(args):
 
-    if len(args) != 2:
+    if len(args) != 4:
         print(" ")
         print(" Usage : {} <configuration_yaml>".format(args[0]))
         return
@@ -254,7 +261,10 @@ def main(args):
     #
 
     with open(args[1], mode='r') as yaml_file:
-        params, steps = load_config(yaml_file.read())
+        yaml_template = yaml_file.read()
+        formatted_yaml = yaml_template.format(version=args[2], project=args[3])
+        params, steps = load_config(formatted_yaml)
+        # params, steps = load_config(yaml_file.read())
 
     if params is None:
         print("Bad YAML load")
