@@ -10,6 +10,46 @@ DEFAULT_DATASET ='idc_current'
 DEFAULT_PROJECT ='idc-dev-etl'
 
 
+def create_meta_summary(project, dataset):
+  client = bigquery.Client(project=project)
+  dataset_id= project+"."+dataset
+  table_id = dataset_id+".clinical_summary"
+
+  schema = [
+          bigquery.SchemaField("collection_id","STRING"),
+          bigquery.SchemaField)"table_name","STRING"),
+          bigquery.SchemaField("post_process_src","STRING"),
+          bigquery.SchemaField("idc_version_collection_added","STRING"),
+          bigquery.SchemaField("collection_added_datetime","DATETIME"),
+          bigquery.SchemaField("post_process_src_added_hash","STRING"),
+          bigquery.SchemaField("collection_updated_datetime","STRING"),
+          bigquery.SchemaField("post_process_src_updated_hash","STRING"),
+          bigquery.SchemaField("post_process_src_current_hash","STRING"),
+          bigquery.SchemaField("number_batches","INTEGER"),
+          bigquery.SchemaField("source_info","RECORD",mode="REPEATED",
+              bigquery.SchemaField("srcs","RECORD","STRING"),
+              bigquery.SchemaField("hash","STRING"),
+              bigquery.SchemaField("original_hash","STRING"),
+              bigquery.SchemaField("last_update_hash","STRING"),
+              bigquery.SchemaField("path","STRING"),
+              ),
+          ]
+
+   dataset=bigquery.Dataset(dataset_id)
+   dataset.location='US'
+   client.delete_dataset(dataset_id,delete_contents=True,not_found_ok=True)
+   dataset = client.create_dataset(dataset)
+   client.delete_table(table_id,not_found_ok=True)
+   table = bigquery.Table(table_id, schema=schema)
+   client.create_table(table)
+
+   with open(filenm, "rb") as source_file:
+       f=open(filenm,"r")
+       metaD=json.load(f)A
+       f.close()
+       job=client.load_table_from_json(metaD, table, job_config=job_config)
+       print(job.result())
+
 def create_meta_table(project, dataset):
 
   client = bigquery.Client(project=project)
