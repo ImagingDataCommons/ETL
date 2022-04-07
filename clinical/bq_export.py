@@ -4,6 +4,11 @@ from os import listdir
 from os.path import isfile,join,splitext
 import sys
 
+DEFAULT_SUFFIX='clinical'
+DEFAULT_DESCRIPTION='clinical data'
+DEFAULT_DATASET ='idc_current'
+DEFAULT_PROJECT ='idc-dev-etl'
+
 
 def create_meta_table(project, dataset):
 
