@@ -20,19 +20,23 @@ def create_meta_summary(project, dataset):
   schema = [
           bigquery.SchemaField("collection_id","STRING"),
           bigquery.SchemaField("table_name","STRING"),
+          bigquery.SchemaField("idc_version_table_added", "STRING"),
+          bigquery.SchemaField("table_added_datetime", "DATETIME"),
           bigquery.SchemaField("post_process_src","STRING"),
-          bigquery.SchemaField("idc_version_collection_added","STRING"),
-          bigquery.SchemaField("collection_added_datetime","STRING"),
           bigquery.SchemaField("post_process_src_added_md5","STRING"),
-          bigquery.SchemaField("collection_updated_datetime","STRING"),
+
+          bigquery.SchemaField("idc_version_table_prior", "STRING"),
+          bigquery.SchemaField("post_process_src_prior_md5", "STRING"),
+          bigquery.SchemaField("idc_version_table_updated","STRING"),
+          bigquery.SchemaField("table_updated_datetime","STRING"),
           bigquery.SchemaField("post_process_src_updated_md5","STRING"),
-          bigquery.SchemaField("post_process_src_current_md5","STRING"),
+          
           bigquery.SchemaField("number_batches","INTEGER"),
           bigquery.SchemaField("source_info","RECORD",mode="REPEATED",
               fields=[bigquery.SchemaField("srcs","STRING",mode="REPEATED"),
-              bigquery.SchemaField("root_src_md5","STRING"),
-              bigquery.SchemaField("original_md5","STRING"),
-              bigquery.SchemaField("last_update_md5","STRING"),
+              bigquery.SchemaField("added_md5","STRING"),
+              bigquery.SchemaField("prior_md5","STRING"),
+              bigquery.SchemaField("update_md5","STRING"),
             ]  
           ),
          ]
@@ -45,13 +49,13 @@ def create_meta_summary(project, dataset):
   client.delete_table(table_id,not_found_ok=True)
   table = bigquery.Table(table_id, schema=schema)
   client.create_table(table)
-  job_config=bigquery.LoadJobConfig(source_format=bigquery.SourceFormat.NEWLINE_DELIMITED_JSON, schema=schema)
+  '''job_config=bigquery.LoadJobConfig(source_format=bigquery.SourceFormat.NEWLINE_DELIMITED_JSON, schema=schema)
 
   f=open(filenm,"r")
   metaD=json.load(f)
   f.close()
   job=client.load_table_from_json(metaD, table, job_config=job_config)
-  print(job.result())
+  print(job.result())'''
 
 def create_meta_table(project, dataset):
 
@@ -163,11 +167,11 @@ def load_clin_files(project, dataset,cpath):
 def load_all(project,dataset):
 
    create_meta_summary(project, dataset) 
-   create_meta_table(project, dataset)
-   filenm="./"+CURRENT_VERSION+"_clinical_meta.json"
-   load_meta(project,dataset,filenm)
-   dirnm="./clin_"+CURRENT_VERSION
-   load_clin_files(project,dataset,dirnm)
+   #create_meta_table(project, dataset)
+   #filenm="./"+CURRENT_VERSION+"_clinical_meta.json"
+   #load_meta(project,dataset,filenm)
+   #dirnm="./clin_"+CURRENT_VERSION
+   #load_clin_files(project,dataset,dirnm)
 
 
 if __name__=="__main__":
