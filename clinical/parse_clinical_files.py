@@ -23,7 +23,7 @@ DEFAULT_DATASET ='idc_v9_clinical'
 DEFAULT_PROJECT ='idc-dev-etl'
 CURRENT_VERSION = 'idc_v9'
 LAST_VERSION = 'idc_v8'
-LAST_DATASET = 'idc_v8_clinical'
+LAST_DATASET = 'idc_8_clinical'
 DESTINATION_FOLDER='./clin_'+CURRENT_VERSION+'/'
 
 def get_md5(filenm):
@@ -342,6 +342,31 @@ def mergeAcrossBatch(clinJson,coll,ptRowIds,attrSetInd):
   clinJson[coll]['mergeBatch'][attrSetInd]['df'] = df_all_rows
 
 def export_meta_to_json(clinJson,filenm_meta,filenm_summary):
+
+  hist ={}
+  table_id = DEFAULT_PROJECT + "." + LAST_DATASET + '.clinical_summary'
+  query = "select * from `" + table_id + "`"
+
+  try:
+    job = client.query(query)
+
+    for row in job.result():
+      tbl = row['table_name']
+      cdic={}
+      cdic['idc_version_table_added'] = row['idc_version_table_added']
+      cdic['table_added_datetime'] = row['table_added_datetime']
+      cdic['post_process_src'] = row['post_process_src']
+      cdic['post_process_src_added_md5'] = row['post_process_src_added_md5']
+      cdic['idc_version_table_prior'] = row['idc_version_table_prior']
+      cdic['post_process_src_prior_md5'] = row['post_process_src_prior_md5']
+      cdic['idc_version_table_updated'] = row['idc_version_table_updated']
+      cdic['post_process_src_updated_md5'] = row['post_process_src_updated_md5']
+      cdic['number_batches'] = row['number_batches']
+      cdic['source_info']=row['source_info']
+      hist[tbl]=cdic
+  except:
+    pass
+
   metaArr=[]
   sumArr=[]
   for coll in clinJson:
@@ -381,19 +406,50 @@ def export_meta_to_json(clinJson,filenm_meta,filenm_summary):
 
           sumDic['collection_id']=collection_id
           sumDic['table_name']=table_name
-          sumDic['idc_version_collection_added']=CURRENT_VERSION
-          sumDic['collection_added_datetime']=str(datetime.now(pytz.utc))
-          sumDic['post_process_src']=post_process_src
-          sumDic['post_process_src_current_md5']=post_process_src_current_md5
-          sumDic['number_batches']=num_batches
+          sumDic['post_process_src'] = post_process_src
 
           src_info = []
           for src in clinJson[coll]['mergeBatch'][k]['srcs']:
-            nsrc={}
+            nsrc = {}
             nsrc['srcs'] = src
-            rootfile=ORIGINAL_SRCS_PATH+coll+'/'+src[0]
-            nsrc['root_src_md5'] = get_md5(rootfile)
+            rootfile = ORIGINAL_SRCS_PATH + coll + '/' + src[0]
+            nsrc['update_md5'] = get_md5(rootfile)
             src_info.append(nsrc)
+
+          if table_name in hist:
+            for nkey in hist[table_name]:
+              if (nkey not in sumDic) and not (nkey == 'source_info'):
+                sumDic[nkey] = hist[table_name][nkey]
+            if (hist[table_name]['post_process_src'] != post_process_src) or (post_process_src_current_md5 != hist[table_name]['post_process_src_updated_md5']):
+              sumDic['idc_version_table_prior'] = sumDic['idc_version_table_updated']
+              sumDic['idc_version_table_prior_md5'] = sumDic['idc_version_table_updated_md5']
+              sumDic['idc_version_table_updated'] = CURRENT_VERSION
+              sumDic['idc_version_table_updated_md5'] = post_process_src_current_md5
+              for i in range(len(src_info)):
+                if (i < len(hist[table_name]['source_info'])) and (src_info[i]['srcs'][0] == hist[table_name]['source_info']['srcs'][0]):
+                  src_info[i]['added_md5'] = hist[table_name]['source_info'][i]['added_md5']
+                  if src_info[i]['update_md5'] == hist[table_name]['source_info'][i]['update_md5']:
+                    src_info[i]['prior_md5'] = hist[table_name]['source_info'][i]['prior_md5']
+                  else:
+                    src_info[i]['prior_md5'] = hist[table_name]['source_info'][i]['update_md5']
+                else:
+                  src_info[i]['added_md5'] = src_info[i]['update_md5']
+                  src_info[i]['prior_md5'] = src_info[i]['prior_md5']
+          else:
+            sumDic['idc_version_table_added']=CURRENT_VERSION
+            sumDic['table_added_datetime']=str(datetime.now(pytz.utc))
+            #sumDic['post_process_src']=post_process_src
+            sumDic['post_process_src_added_md5']=post_process_src_current_md5
+            sumDic['idc_version_table_prior']=CURRENT_VERSION
+            sumDic['post_process_src_prior_md5']=post_process_src_current_md5
+            sumDic['idc_version_table_updated'] = CURRENT_VERSION
+            sumDic['table_updated_datetime'] = str(datetime.now(pytz.utc))
+            sumDic['post_process_src_updated_md5'] = post_process_src_current_md5
+            sumDic['number_batches']=num_batches
+            for i in range(len(src_info)):
+              src_info[i]['added_md5'] = src_info[i]['update_md5']
+              src_info[i]['prior_md5'] = src_info[i]['update_md5']
+
           sumDic['source_info']=src_info
           sumArr.append(sumDic)
 
@@ -462,7 +518,6 @@ def export_meta_to_json(clinJson,filenm_meta,filenm_summary):
   f = open(filenm_meta, 'w')
   json.dump(metaArr, f)
   f.close()
-
 
 def parse_acrin_collection(clinJson,coll):
   webapp_coll=clinJson[coll]['idc_webapp']
@@ -613,10 +668,6 @@ if __name__=="__main__":
 
   #ORIGINAL_SRCS_PATH=sys.argv[1]
   clinJson =read_clin_file(NOTES_PATH+'clinical_notes.json')
-  #coll="ACRIN-NSCLC-FDG-PET (ACRIN 6668)"
-  #coll2='QIN-HeadNeck'
-  #clinJson={coll: clinJsonF[coll], coll2: clinJsonF[coll2]}
-  #clinJson = { coll2: clinJsonF[coll2]}
   collec=list(clinJson.keys())
   collec.sort()
   client = bigquery.Client()
@@ -629,6 +680,7 @@ if __name__=="__main__":
     #print(row)
     if wiki_collec in clinJson:
       clinJson[wiki_collec]['idc_webapp'] = idc_webapp
+
 
   for colInd in range(len(collec)):
     coll=collec[colInd]
