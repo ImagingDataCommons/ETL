@@ -6,49 +6,52 @@ import sys
 
 DEFAULT_SUFFIX='clinical'
 DEFAULT_DESCRIPTION='clinical data'
-DEFAULT_DATASET ='idc_current'
 DEFAULT_PROJECT ='idc-dev-etl'
+CURRENT_VERSION = 'idc_v9'
+DATASET=CURRENT_VERSION+'_clinical'
 
 
 def create_meta_summary(project, dataset):
   client = bigquery.Client(project=project)
   dataset_id= project+"."+dataset
   table_id = dataset_id+".clinical_summary"
+  filenm=CURRENT_VERSION+"_clinical_summary.json"
 
   schema = [
           bigquery.SchemaField("collection_id","STRING"),
-          bigquery.SchemaField)"table_name","STRING"),
+          bigquery.SchemaField("table_name","STRING"),
           bigquery.SchemaField("post_process_src","STRING"),
           bigquery.SchemaField("idc_version_collection_added","STRING"),
-          bigquery.SchemaField("collection_added_datetime","DATETIME"),
-          bigquery.SchemaField("post_process_src_added_hash","STRING"),
+          bigquery.SchemaField("collection_added_datetime","STRING"),
+          bigquery.SchemaField("post_process_src_added_md5","STRING"),
           bigquery.SchemaField("collection_updated_datetime","STRING"),
-          bigquery.SchemaField("post_process_src_updated_hash","STRING"),
-          bigquery.SchemaField("post_process_src_current_hash","STRING"),
+          bigquery.SchemaField("post_process_src_updated_md5","STRING"),
+          bigquery.SchemaField("post_process_src_current_md5","STRING"),
           bigquery.SchemaField("number_batches","INTEGER"),
           bigquery.SchemaField("source_info","RECORD",mode="REPEATED",
-              bigquery.SchemaField("srcs","RECORD","STRING"),
-              bigquery.SchemaField("hash","STRING"),
-              bigquery.SchemaField("original_hash","STRING"),
-              bigquery.SchemaField("last_update_hash","STRING"),
-              bigquery.SchemaField("path","STRING"),
-              ),
-          ]
+              fields=[bigquery.SchemaField("srcs","STRING",mode="REPEATED"),
+              bigquery.SchemaField("root_src_md5","STRING"),
+              bigquery.SchemaField("original_md5","STRING"),
+              bigquery.SchemaField("last_update_md5","STRING"),
+            ]  
+          ),
+         ]
 
-   dataset=bigquery.Dataset(dataset_id)
-   dataset.location='US'
-   client.delete_dataset(dataset_id,delete_contents=True,not_found_ok=True)
-   dataset = client.create_dataset(dataset)
-   client.delete_table(table_id,not_found_ok=True)
-   table = bigquery.Table(table_id, schema=schema)
-   client.create_table(table)
+  dataset=bigquery.Dataset(dataset_id)
+  dataset.location='US'
+  client.delete_dataset(dataset_id,delete_contents=True,not_found_ok=True)
+  dataset=client.create_dataset(dataset)
 
-   with open(filenm, "rb") as source_file:
-       f=open(filenm,"r")
-       metaD=json.load(f)A
-       f.close()
-       job=client.load_table_from_json(metaD, table, job_config=job_config)
-       print(job.result())
+  client.delete_table(table_id,not_found_ok=True)
+  table = bigquery.Table(table_id, schema=schema)
+  client.create_table(table)
+  job_config=bigquery.LoadJobConfig(source_format=bigquery.SourceFormat.NEWLINE_DELIMITED_JSON, schema=schema)
+
+  f=open(filenm,"r")
+  metaD=json.load(f)
+  f.close()
+  job=client.load_table_from_json(metaD, table, job_config=job_config)
+  print(job.result())
 
 def create_meta_table(project, dataset):
 
@@ -70,7 +73,6 @@ def create_meta_table(project, dataset):
                 fields=[
                   bigquery.SchemaField("option_code","STRING"),
                   bigquery.SchemaField("option_description","STRING"),
-                  #bigquery.SchemaField("option_code","INTEGER")
              ],
             ),
            bigquery.SchemaField("files", "RECORD", mode="REPEATED",
@@ -88,8 +90,6 @@ def create_meta_table(project, dataset):
   
   dataset=bigquery.Dataset(dataset_id)
   dataset.location='US'
-  client.delete_dataset(dataset_id, delete_contents=True, not_found_ok=True)
-  dataset = client.create_dataset(dataset)
   client.delete_table(table_id,not_found_ok=True)
   table = bigquery.Table(table_id, schema=schema)
   client.create_table(table)
@@ -105,14 +105,10 @@ def load_meta(project, dataset, filenm):
     f=open(filenm,'r')
     metaD=json.load(f)
     f.close()
-    #for row in metaD:
-      #row['source']=json.dumps(row['source'])
-      #if 'rng' in row:
-      #    row['rng']=str(row['rng'])
     job=client.load_table_from_json(metaD, table, job_config=job_config)
     print(job.result())
 
-def load_clin_files(project, dataset,cpath,use_schema):
+def load_clin_files(project, dataset,cpath):
   client = bigquery.Client(project=project)
   ofiles = [f for f in listdir(cpath) if isfile(join(cpath,f))]
   dataset_created={}
@@ -160,21 +156,20 @@ def load_clin_files(project, dataset,cpath,use_schema):
         schema.append(bigquery.SchemaField(col,colType))
       client.delete_table(table_id,not_found_ok=True)
       table=bigquery.Table(table_id)
-      #if use_schema:
-      #  table=bigquery.Table(table_id, schema=schema)
       job_config =bigquery.LoadJobConfig(source_format=bigquery.SourceFormat.NEWLINE_DELIMITED_JSON, schema=schema)
       job= client.load_table_from_json(cdata, table, job_config=job_config)    
       print(job.result())
     
-def load_all(project,dataset,use_schema):
+def load_all(project,dataset):
+
+   create_meta_summary(project, dataset) 
    create_meta_table(project, dataset)
-   load_meta(project,dataset,"./clinical_meta_out.json")
-   load_clin_files(project,dataset,"./clin/",use_schema)
+   filenm="./"+CURRENT_VERSION+"_clinical_meta.json"
+   load_meta(project,dataset,filenm)
+   dirnm="./clin_"+CURRENT_VERSION
+   load_clin_files(project,dataset,dirnm)
 
 
 if __name__=="__main__":
-  project=sys.argv[1]
-  dataset=sys.argv[2]
-  use_schema = sys.argv[3]
-  load_all(project,dataset,use_schema)
+  load_all(DEFAULT_PROJECT, DATASET)
 
