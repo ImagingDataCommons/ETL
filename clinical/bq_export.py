@@ -21,10 +21,10 @@ def create_meta_summary(project, dataset):
           bigquery.SchemaField("collection_id","STRING"),
           bigquery.SchemaField("table_name","STRING"),
           bigquery.SchemaField("idc_version_table_added", "STRING"),
-          bigquery.SchemaField("table_added_datetime", "DATETIME"),
+          bigquery.SchemaField("table_added_datetime", "STRING"),
           bigquery.SchemaField("post_process_src","STRING"),
           bigquery.SchemaField("post_process_src_added_md5","STRING"),
-
+          
           bigquery.SchemaField("idc_version_table_prior", "STRING"),
           bigquery.SchemaField("post_process_src_prior_md5", "STRING"),
           bigquery.SchemaField("idc_version_table_updated","STRING"),
@@ -39,7 +39,8 @@ def create_meta_summary(project, dataset):
               bigquery.SchemaField("update_md5","STRING"),
             ]  
           ),
-         ]
+           ] 
+         
 
   dataset=bigquery.Dataset(dataset_id)
   dataset.location='US'
@@ -49,13 +50,13 @@ def create_meta_summary(project, dataset):
   client.delete_table(table_id,not_found_ok=True)
   table = bigquery.Table(table_id, schema=schema)
   client.create_table(table)
-  '''job_config=bigquery.LoadJobConfig(source_format=bigquery.SourceFormat.NEWLINE_DELIMITED_JSON, schema=schema)
-
+  job_config=bigquery.LoadJobConfig(source_format=bigquery.SourceFormat.NEWLINE_DELIMITED_JSON, schema=schema)
+  #filenm="temp.json"
   f=open(filenm,"r")
   metaD=json.load(f)
   f.close()
   job=client.load_table_from_json(metaD, table, job_config=job_config)
-  print(job.result())'''
+  print(job.result())
 
 def create_meta_table(project, dataset):
 
@@ -122,18 +123,18 @@ def load_clin_files(project, dataset,cpath):
     file_ext = splitext(ofile)[1]
     print(collec+" "+file_ext)
     if file_ext=='.csv':
-        rcollecSp=ofile[::-1].split('_',1)
-        dataset_nm=rcollecSp[1][::-1]
-        collec=rcollecSp[0][::-1].replace('.csv','')
+        #rcollecSp=ofile[::-1].split('_',1)
+        #dataset_nm=rcollecSp[1][::-1]
+        #collec=rcollecSp[0][::-1].replace('.csv','')
 
-        if not dataset_nm in dataset_created:
-          dataset_id=project+"."+dataset_nm
-          cdataset = bigquery.Dataset(dataset_id)
-          cdataset.location='US'
-          client.delete_dataset(dataset_id,delete_contents=True,not_found_ok=True)
-          cdataset=client.create_dataset(cdataset)
-          dataset_created[dataset_nm]=1
-        table_id=project+"."+dataset_nm+"."+collec
+        #if not dataset_nm in dataset_created:
+        #  dataset_id=project+"."+dataset_nm
+        #  cdataset = bigquery.Dataset(dataset_id)
+        #  cdataset.location='US'
+        #  client.delete_dataset(dataset_id,delete_contents=True,not_found_ok=True)
+        #  cdataset=client.create_dataset(cdataset)
+        #  dataset_created[dataset_nm]=1
+        table_id=project+"."+dataset+"."+collec
         job_config=bigquery.LoadJobConfig(autodetect=True,source_format=bigquery.SourceFormat.CSV)
         print(cfile)
         with open(cfile,'rb') as nfile:
@@ -165,15 +166,20 @@ def load_clin_files(project, dataset,cpath):
       print(job.result())
     
 def load_all(project,dataset):
-
+   #pass
    create_meta_summary(project, dataset) 
-   #create_meta_table(project, dataset)
-   #filenm="./"+CURRENT_VERSION+"_clinical_meta.json"
-   #load_meta(project,dataset,filenm)
-   #dirnm="./clin_"+CURRENT_VERSION
-   #load_clin_files(project,dataset,dirnm)
+   create_meta_table(project, dataset)
+   filenm="./"+CURRENT_VERSION+"_clinical_meta.json"
+   load_meta(project,dataset,filenm)
+   dirnm="./clin_"+CURRENT_VERSION
+   load_clin_files(project,dataset,dirnm)
 
 
 if __name__=="__main__":
+  #client = bigquery.Client(project="idc-dev-etl")
+  #dataset_id="idc-dev-etl.acrin_nlsc_fdg_pet_ct"
+  #dataset=bigquery.Dataset(dataset_id)
+  #dataset.location='US'
+  #client.delete_dataset(dataset_id,delete_contents=True,not_found_ok=True)
   load_all(DEFAULT_PROJECT, DATASET)
 
