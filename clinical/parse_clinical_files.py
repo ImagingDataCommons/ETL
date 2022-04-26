@@ -463,9 +463,11 @@ def export_meta_to_json(clinJson,filenm_meta,filenm_summary):
             ndic['table_name'] = table_name
             ndic['table_description'] = table_description
             header = curDf.columns[i]
-            headerD = curDic['headers'][header][0]
+            if (len(curDic['headers'][header])>0):
+              headerD = curDic['headers'][header][0]
+            else:
+              headerD={}
             dftype=str(dtypeL[i].name)
-
             try:
               ndic['variable_label']=headerD['attrs'][len(headerD['attrs'])-1]
             except:
@@ -519,12 +521,45 @@ def export_meta_to_json(clinJson,filenm_meta,filenm_summary):
   json.dump(metaArr, f)
   f.close()
 
+
+def reform_case(case_id, colec,type):
+
+  if type == "same":
+    ret = case_id
+  elif type == "acrin format":
+    ret=colec+'_'+case_id.rjust(3,'0')
+  elif type == "switch dash":
+    ret=case_id.replace('_','-')
+  elif type == "3DCT-RT":
+    ret="HN_P"+case_id.rjust(3,'0')
+  elif type=="ispy":
+    ret="ISPY1_"+case_id
+  elif type=="lung_pt":
+    ret = "Lung_Dx-"+case_id
+  elif type=='add colec':
+    ret=colec+'_'+case_id
+  return ret
+
+
+def add_tcia_case_id(mergeB, tcia_coll,type):
+  colId=mergeB['ptId'][0][1]
+  df=mergeB['df']
+  ncaseA=df[colId].apply(lambda x: reform_case(str(x),tcia_coll,type))
+  '''for row in df.iterrows():
+    case_id=row[colId]
+    ncaseid=reform_case(case_id,tcia_coll,type)
+    ncaseA.append(ncaseid)'''
+  df.insert(0,'tcia_case_id',ncaseA)
+  mergeB['headers']['tcia_case_id']=[]
+
+
+
+
 def parse_acrin_collection(clinJson,coll):
   webapp_coll=clinJson[coll]['idc_webapp']
   clinJson[coll]['mergeBatch']=[]
   clinJson[coll]['tabletypes']=[]
   #clinJson[coll]['dataset'] = webapp_coll+'_clinical'
-
 
   if 'uzip' in clinJson[coll]:
     for zpfile in clinJson[coll]['uzip']:
@@ -577,7 +612,7 @@ def parse_acrin_collection(clinJson,coll):
         #shutil.copy2(srcf,destf)
         recastDataFrameTypes(df, 0)
         destf = DESTINATION_FOLDER +'/' + webapp_coll + '_' + form_id + '.csv'
-        df.to_csv(destf, index=False)
+        #df.to_csv(destf, index=False)
         ndic={}
         ndic['df']=df
         ndic['ptId']=[[0, df.columns[0].lower()]]
@@ -609,9 +644,12 @@ def parse_acrin_collection(clinJson,coll):
         if (len(clinJson[coll]['uzip'])>1):
           ndic['srcs'].append([clinJson[coll]['uzip'][1],ccdir + '/' + form_id + '.csv'])
         ndic['outfile']=webapp_coll + '_' + form_id + '.csv'
+        add_tcia_case_id(ndic, clinJson[coll]['tcia_api'], clinJson[coll]['case_id'])
+        ndic['df'].to_csv(destf, index=False)
         clinJson[coll]['mergeBatch'].append(ndic)
 
   pass
+
 
 def parse_conventional_collection(clinJson,coll):
   if 'uzip' in clinJson[coll]:
@@ -671,16 +709,17 @@ if __name__=="__main__":
   collec=list(clinJson.keys())
   collec.sort()
   client = bigquery.Client()
-  query = "select tcia_wiki_collection_id, idc_webapp_collection_id from `idc-dev-etl.idc_current.original_collections_metadata`"
+  query = "select tcia_api_collection_id, tcia_wiki_collection_id, idc_webapp_collection_id from `idc-dev-etl.idc_current.original_collections_metadata` order by `tcia_wiki_collection_id`"
   job = client.query(query)
 
   for row in job.result():
+    tcia_api=row['tcia_api_collection_id']
     wiki_collec=row['tcia_wiki_collection_id']
     idc_webapp=row['idc_webapp_collection_id']
     #print(row)
     if wiki_collec in clinJson:
       clinJson[wiki_collec]['idc_webapp'] = idc_webapp
-
+      clinJson[wiki_collec]['tcia_api'] = tcia_api
 
   for colInd in range(len(collec)):
     coll=collec[colInd]
@@ -690,7 +729,7 @@ if __name__=="__main__":
         pass
     else:
       pass
-      parse_conventional_collection(clinJson, coll)
+      #parse_conventional_collection(clinJson, coll)
 
 
 
