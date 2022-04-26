@@ -644,7 +644,7 @@ def parse_acrin_collection(clinJson,coll):
         if (len(clinJson[coll]['uzip'])>1):
           ndic['srcs'].append([clinJson[coll]['uzip'][1],ccdir + '/' + form_id + '.csv'])
         ndic['outfile']=webapp_coll + '_' + form_id + '.csv'
-        add_tcia_case_id(ndic, clinJson[coll]['tcia_api'], clinJson[coll]['case_id'])
+        #add_tcia_case_id(ndic, clinJson[coll]['tcia_api'], clinJson[coll]['case_id'])
         ndic['df'].to_csv(destf, index=False)
         clinJson[coll]['mergeBatch'].append(ndic)
 
