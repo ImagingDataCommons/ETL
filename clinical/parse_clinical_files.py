@@ -624,7 +624,7 @@ def parse_acrin_collection(clinJson,coll):
           osrcf= ORIGINAL_SRCS_PATH + coll + '/' + ccdir + '/' +form_id+'.csv'
           df2 = pd.read_csv(osrcf)
           ptId.append([0, df2.columns[0].lower()])
-          df2.insert(0, 'source_batch', 0)
+          df2.insert(0, 'source_batch', 1)
           #headers['source_batch'] = {'attrs': ['NA'], 'colNo': -1}
           colnames.append(list(df.columns))
           df = pd.concat([df, df2])
