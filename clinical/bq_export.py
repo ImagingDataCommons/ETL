@@ -14,8 +14,8 @@ DATASET=CURRENT_VERSION+'_clinical'
 def create_meta_summary(project, dataset):
   client = bigquery.Client(project=project)
   dataset_id= project+"."+dataset
-  table_id = dataset_id+".clinical_summary"
-  filenm=CURRENT_VERSION+"_clinical_summary.json"
+  table_id = dataset_id+".clinical_meta_table"
+  filenm=CURRENT_VERSION+"_clinical_meta_table.json"
 
   schema = [
           bigquery.SchemaField("collection_id","STRING"),
@@ -39,6 +39,8 @@ def create_meta_summary(project, dataset):
               bigquery.SchemaField("update_md5","STRING"),
             ]  
           ),
+          biggquery.SchemaField("dataset","STRING"),
+          bigquery.SchemaField("project","STRING")
            ] 
          
 
@@ -62,7 +64,7 @@ def create_meta_table(project, dataset):
 
   client = bigquery.Client(project=project)
   dataset_id= project+"."+dataset
-  table_id = dataset_id+".clinical_meta"
+  table_id = dataset_id+".clinical_meta_column"
 
   schema = [
             bigquery.SchemaField("collection_id","STRING"),
@@ -87,9 +89,7 @@ def create_meta_table(project, dataset):
                ),
            bigquery.SchemaField("sheet_names","STRING",mode="REPEATED"),
            bigquery.SchemaField("batch", "INTEGER",mode="REPEATED"),
-           bigquery.SchemaField("column_numbers", "INTEGER", mode="REPEATED"),
-           bigquery.SchemaField("project","STRING"),
-           bigquery.SchemaField("dataset","STRING")
+           bigquery.SchemaField("column_numbers", "INTEGER", mode="REPEATED")
                
            ] 
   
@@ -101,7 +101,7 @@ def create_meta_table(project, dataset):
 
 def load_meta(project, dataset, filenm):
   client = bigquery.Client(project=project)
-  table_id=project+"."+dataset+".clinical_meta"
+  table_id=project+"."+dataset+".clinical_meta_column"
   table=bigquery.Table(table_id)
 
   job_config = bigquery.LoadJobConfig(source_format=bigquery.SourceFormat.NEWLINE_DELIMITED_JSON)
@@ -169,7 +169,9 @@ def load_all(project,dataset):
    #pass
    create_meta_summary(project, dataset) 
    create_meta_table(project, dataset)
-   filenm="./"+CURRENT_VERSION+"_clinical_meta.json"
+   filenm="./"+CURRENT_VERSION+"_clinical_meta_table.json"
+   #filenm="./ntmp2.json"
+   print(filenm)
    load_meta(project,dataset,filenm)
    dirnm="./clin_"+CURRENT_VERSION
    load_clin_files(project,dataset,dirnm)
