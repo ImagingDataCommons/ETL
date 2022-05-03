@@ -107,11 +107,12 @@ def analyzeDataFrame(cdic):
       uVals.sort()
     except:
       pass
-    cdic['headers'][df.columns[i]][0]['uniques']=uVals
-    if (df.dtypes[i].name == 'float64') or (df.dtypes[i].name == 'Int64'):
-      if (len(uVals)>0):
-        cdic['headers'][df.columns[i]][0]['rng']=[float(uVals[0]),float(uVals[len(uVals)-1])]
-        iii=1
+    if len(cdic['headers'][df.columns[i]])>0:
+      cdic['headers'][df.columns[i]][0]['uniques']=uVals
+      if (df.dtypes[i].name == 'float64') or (df.dtypes[i].name == 'Int64'):
+        if (len(uVals)>0):
+          cdic['headers'][df.columns[i]][0]['rng']=[float(uVals[0]),float(uVals[len(uVals)-1])]
+          iii=1
 
 def processSrc(fpath, colName, srcInfo):
   attrs=[]
@@ -340,6 +341,7 @@ def mergeAcrossBatch(clinJson,coll,ptRowIds,attrSetInd):
     df_all_rows=pd.concat([df_all_rows,new_df])
   clinJson[coll]['mergeBatch'][attrSetInd]['cList'] = cList
   clinJson[coll]['mergeBatch'][attrSetInd]['df'] = df_all_rows
+  clinJson[coll]['mergeBatch'][attrSetInd]['headers']['source_batch']=[]
 
 def export_meta_to_json(clinJson,filenm_meta,filenm_summary):
 
@@ -388,6 +390,7 @@ def export_meta_to_json(clinJson,filenm_meta,filenm_summary):
           curDf=clinJson[coll]['mergeBatch'][k]['df']
           dtypeL=list(curDf.dtypes)
           ptId=curDic['ptId'][0][0]
+          ptCol=curDic['ptId'][0][1]
 
           if 'tabletypes' in clinJson[coll]:
             suffix=list(clinJson[coll]['tabletypes'][k].keys())[0]
@@ -451,11 +454,12 @@ def export_meta_to_json(clinJson,filenm_meta,filenm_summary):
               src_info[i]['prior_md5'] = src_info[i]['update_md5']
 
           sumDic['source_info']=src_info
+          sumDic['project'] = project
+          sumDic['dataset'] = dataset
           sumArr.append(sumDic)
-
           for i in range(len(curDf.columns)):
             ndic = {}
-            if (i == ptId):
+            if (str(curDf.columns[i]) == str(ptCol)):
               ndic['case_col']='yes'
             else:
               ndic['case_col'] = 'no'
@@ -481,13 +485,19 @@ def export_meta_to_json(clinJson,filenm_meta,filenm_summary):
               ndic['variable_label']=headerD['dictinfo']['variable_label']
               ndic['data_type'] = headerD['dictinfo']['data_type']
               ndic['values']=headerD['dictinfo']['values']
+              for val in ndic['values']:
+                if val['option_code'].lower() == 'nan':
+                  val['option_code'] = '\"'+val['option_code']+'\"'
             elif 'uniques' in headerD:
               num_values=len(headerD['uniques'])
               if (num_values<21):
                 #ndic['uniques'] = headerD['uniques']
                 ndic['values']=[]
                 for val in headerD['uniques']:
-                  ndic['values'].append({'option_code':str(val)})
+                  cval=str(val)
+                  if cval.lower()=='nan':
+                    cval='\"'+cval+'\"'
+                  ndic['values'].append({'option_code':cval})
               headerD.pop('uniques')
             ndic['original_column_headers'] = []
             ndic['files'] = []
@@ -508,11 +518,8 @@ def export_meta_to_json(clinJson,filenm_meta,filenm_summary):
                 ndic['files'].append( {'name': headerInfo['filenm']} )
               except:
                 pass
-              ndic['project'] = project
-              ndic['dataset'] = dataset
 
             metaArr.append(ndic)
-
   f=open(filenm_summary,'w')
   json.dump(sumArr,f)
   f.close()
@@ -527,7 +534,7 @@ def reform_case(case_id, colec,type):
   if type == "same":
     ret = case_id
   elif type == "acrin format":
-    ret=colec+'_'+case_id.rjust(3,'0')
+    ret=colec+'-'+case_id.rjust(3,'0')
   elif type == "switch dash":
     ret=case_id.replace('_','-')
   elif type == "3DCT-RT":
@@ -549,8 +556,8 @@ def add_tcia_case_id(mergeB, tcia_coll,type):
     case_id=row[colId]
     ncaseid=reform_case(case_id,tcia_coll,type)
     ncaseA.append(ncaseid)'''
-  df.insert(0,'tcia_case_id',ncaseA)
-  mergeB['headers']['tcia_case_id']=[]
+  df.insert(0,'dicom_patient_id',ncaseA)
+  mergeB['headers']['dicom_patient_id']=[]
 
 
 
@@ -599,6 +606,9 @@ def parse_acrin_collection(clinJson,coll):
 
         clinJson[coll]['tabletypes'].append({form_id:desc})
         df = pd.read_csv(srcf)
+        df.insert(0, 'source_batch', 0)
+        #headers['source_batch'] = {'attrs': ['NA'], 'colNo': -1}
+
         colnames = [list(df.columns)]
         if len(clinJson[coll]['uzip'])>1:
           if 'udir' in clinJson[coll]:
@@ -607,6 +617,8 @@ def parse_acrin_collection(clinJson,coll):
             ccdir = path.splitext(clinJson[coll]['uzip'][1])[0]
           osrcf= ORIGINAL_SRCS_PATH + coll + '/' + ccdir + '/' +form_id+'.csv'
           df2 = pd.read_csv(osrcf)
+          df2.insert(0, 'source_batch', 0)
+          #headers['source_batch'] = {'attrs': ['NA'], 'colNo': -1}
           colnames.append(list(df.columns))
           df = pd.concat([df, df2])
         #shutil.copy2(srcf,destf)
@@ -644,8 +656,9 @@ def parse_acrin_collection(clinJson,coll):
         if (len(clinJson[coll]['uzip'])>1):
           ndic['srcs'].append([clinJson[coll]['uzip'][1],ccdir + '/' + form_id + '.csv'])
         ndic['outfile']=webapp_coll + '_' + form_id + '.csv'
-        #add_tcia_case_id(ndic, clinJson[coll]['tcia_api'], clinJson[coll]['case_id'])
+        add_tcia_case_id(ndic, clinJson[coll]['tcia_api'], clinJson[coll]['case_id'])
         ndic['df'].to_csv(destf, index=False)
+        ndic['source_batch']=[]
         clinJson[coll]['mergeBatch'].append(ndic)
 
   pass
@@ -672,7 +685,8 @@ def parse_conventional_collection(clinJson,coll):
         print("strcInfo " + str(srcInfo))
         if not ('type' in srcInfo) or not (srcInfo['type'] == 'json'):
           [headers, df, sheetnm] = processSrc(ORIGINAL_SRCS_PATH, coll, srcInfo)
-          df['source_batch'] = batchSetInd
+          #df['source_batch'] = batchSetInd
+          df.insert(0, 'source_batch', batchSetInd)
           headers['source_batch'] = {'attrs':['NA'], 'colNo':-1}
           # attrs.append([attr])
           srcInfo['sheetnm']=sheetnm
@@ -690,6 +704,10 @@ def parse_conventional_collection(clinJson,coll):
           suffix = list(clinJson[coll]['tabletypes'][attrSetInd].keys())[0]
         nm = clinJson[coll]['idc_webapp'] + '_' + suffix
         clinJson[coll]['mergeBatch'][attrSetInd]['outfile'] = nm + '.json'
+        try:
+          add_tcia_case_id(clinJson[coll]['mergeBatch'][attrSetInd], clinJson[coll]['tcia_api'], clinJson[coll]['case_id'])
+        except:
+          pass
         write_dataframe_to_json(DESTINATION_FOLDER, nm, clinJson[coll]['mergeBatch'][attrSetInd]['df'])
 
     if not wJson and 'idc_webapp' in clinJson[coll]:
@@ -729,13 +747,10 @@ if __name__=="__main__":
         pass
     else:
       pass
-      #parse_conventional_collection(clinJson, coll)
+      parse_conventional_collection(clinJson, coll)
 
-
-
-
-  clin_meta=  CURRENT_VERSION +'_clinical_meta.json'
-  clin_summary = CURRENT_VERSION +'_clinical_summary.json'
+  clin_meta=  CURRENT_VERSION +'_clinical_meta_column.json'
+  clin_summary = CURRENT_VERSION +'_clinical_meta_table.json'
   export_meta_to_json(clinJson,clin_meta,clin_summary)
   i=1
 
