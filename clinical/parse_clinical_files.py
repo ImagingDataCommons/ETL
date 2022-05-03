@@ -107,12 +107,16 @@ def analyzeDataFrame(cdic):
       uVals.sort()
     except:
       pass
-    if len(cdic['headers'][df.columns[i]])>0:
-      cdic['headers'][df.columns[i]][0]['uniques']=uVals
-      if (df.dtypes[i].name == 'float64') or (df.dtypes[i].name == 'Int64'):
-        if (len(uVals)>0):
-          cdic['headers'][df.columns[i]][0]['rng']=[float(uVals[0]),float(uVals[len(uVals)-1])]
-          iii=1
+    try:
+      if len(cdic['headers'][df.columns[i]])>0:
+        cdic['headers'][df.columns[i]][0]['uniques']=uVals
+        if (df.dtypes[i].name == 'float64') or (df.dtypes[i].name == 'Int64'):
+          if (len(uVals)>0):
+            cdic['headers'][df.columns[i]][0]['rng']=[float(uVals[0]),float(uVals[len(uVals)-1])]
+            iii=1
+    except:
+      iii=1
+
 
 def processSrc(fpath, colName, srcInfo):
   attrs=[]
@@ -269,12 +273,12 @@ def mergeAcrossAttr(clinJson, coll):
   clinJson[coll]['ptIdSeq'] = ptIdSeq
   clinJson[coll]['df'] = new_df
 
-def mergeAcrossBatch(clinJson,coll,ptRowIds,attrSetInd):
+def mergeAcrossBatch(clinJson,coll,ptRowIds,attrSetInd,colsAdded):
   if 'mergeBatch' not in clinJson[coll]:
     clinJson[coll]['mergeBatch'] = []
   clinJson[coll]['mergeBatch'].append({})
   cList = list(clinJson[coll]['cols'][attrSetInd][0]['df'].columns)
-  ptRow = cList[ptRowIds[0]]
+  ptRow = cList[ptRowIds[0]+colsAdded]
   clinJson[coll]['mergeBatch'][attrSetInd]['ptId'] = []
   clinJson[coll]['mergeBatch'][attrSetInd]['ptId'].append([ptRowIds[0],ptRow])
 
@@ -300,7 +304,7 @@ def mergeAcrossBatch(clinJson,coll,ptRowIds,attrSetInd):
 
   for batchSetInd in range(1,len(clinJson[coll]['cols'][attrSetInd])):
     nList = list(clinJson[coll]['cols'][attrSetInd][batchSetInd]['df'].columns)
-    cptRow = nList[ptRowIds[batchSetInd]]
+    cptRow = nList[ptRowIds[batchSetInd]+colsAdded]
     clinJson[coll]['mergeBatch'][attrSetInd]['ptId'].append([ptRowIds[batchSetInd],cptRow])
     if not ptRow == cptRow:
       print("Different patientColumn! "+coll)
@@ -336,7 +340,7 @@ def mergeAcrossBatch(clinJson,coll,ptRowIds,attrSetInd):
 
     #make sure joining df is using the same patientId column name as the original
     colList=list(new_df.columns)
-    colList[ptRowIds[batchSetInd]] = ptRow
+    colList[ptRowIds[batchSetInd]+colsAdded] = ptRow
     new_df.columns = colList
     df_all_rows=pd.concat([df_all_rows,new_df])
   clinJson[coll]['mergeBatch'][attrSetInd]['cList'] = cList
@@ -606,10 +610,12 @@ def parse_acrin_collection(clinJson,coll):
 
         clinJson[coll]['tabletypes'].append({form_id:desc})
         df = pd.read_csv(srcf)
+        ptId = [[0, df.columns[0].lower()]]
         df.insert(0, 'source_batch', 0)
         #headers['source_batch'] = {'attrs': ['NA'], 'colNo': -1}
 
         colnames = [list(df.columns)]
+
         if len(clinJson[coll]['uzip'])>1:
           if 'udir' in clinJson[coll]:
             ccdir = clinJson[coll]['udir'][1]
@@ -617,6 +623,7 @@ def parse_acrin_collection(clinJson,coll):
             ccdir = path.splitext(clinJson[coll]['uzip'][1])[0]
           osrcf= ORIGINAL_SRCS_PATH + coll + '/' + ccdir + '/' +form_id+'.csv'
           df2 = pd.read_csv(osrcf)
+          ptId.append([0, df2.columns[0].lower()])
           df2.insert(0, 'source_batch', 0)
           #headers['source_batch'] = {'attrs': ['NA'], 'colNo': -1}
           colnames.append(list(df.columns))
@@ -627,7 +634,7 @@ def parse_acrin_collection(clinJson,coll):
         #df.to_csv(destf, index=False)
         ndic={}
         ndic['df']=df
-        ndic['ptId']=[[0, df.columns[0].lower()]]
+        ndic['ptId']=ptId
         ndic['headers'] ={}
         orig_names=list(df.columns)
         norm_names=[df.columns[k].lower() for k in range(len(df.columns))]
@@ -695,7 +702,8 @@ def parse_conventional_collection(clinJson,coll):
         else:
           wJson = True
       if not wJson and 'idc_webapp' in clinJson[coll]:
-        mergeAcrossBatch(clinJson, coll, ptRowIds, attrSetInd)
+        colsAdded=1
+        mergeAcrossBatch(clinJson, coll, ptRowIds, attrSetInd, colsAdded)
         recastDataFrameTypes(clinJson[coll]['mergeBatch'][attrSetInd]['df'],
                              clinJson[coll]['mergeBatch'][attrSetInd]['ptId'][0][0])
         analyzeDataFrame(clinJson[coll]['mergeBatch'][attrSetInd])
