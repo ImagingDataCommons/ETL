@@ -8,7 +8,7 @@ DEFAULT_SUFFIX='clinical'
 DEFAULT_DESCRIPTION='clinical data'
 DEFAULT_PROJECT ='idc-dev-etl'
 CURRENT_VERSION = 'idc_v9'
-DATASET=CURRENT_VERSION+'_clinical'
+DATASET=CURRENT_VERSION+'_tmpclinical'
 
 
 def create_meta_summary(project, dataset):
@@ -39,7 +39,7 @@ def create_meta_summary(project, dataset):
               bigquery.SchemaField("update_md5","STRING"),
             ]  
           ),
-          biggquery.SchemaField("dataset","STRING"),
+          bigquery.SchemaField("dataset","STRING"),
           bigquery.SchemaField("project","STRING")
            ] 
          
@@ -169,12 +169,12 @@ def load_all(project,dataset):
    #pass
    create_meta_summary(project, dataset) 
    create_meta_table(project, dataset)
-   filenm="./"+CURRENT_VERSION+"_clinical_meta_table.json"
+   filenm="./"+CURRENT_VERSION+"_clinical_meta_column.json"
    #filenm="./ntmp2.json"
    print(filenm)
    load_meta(project,dataset,filenm)
-   dirnm="./clin_"+CURRENT_VERSION
-   load_clin_files(project,dataset,dirnm)
+   #dirnm="./clin_"+CURRENT_VERSION
+   #load_clin_files(project,dataset,dirnm)
 
 
 if __name__=="__main__":
