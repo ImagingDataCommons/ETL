@@ -173,8 +173,8 @@ def load_all(project,dataset):
    #filenm="./ntmp2.json"
    print(filenm)
    load_meta(project,dataset,filenm)
-   #dirnm="./clin_"+CURRENT_VERSION
-   #load_clin_files(project,dataset,dirnm)
+   dirnm="./clin_"+CURRENT_VERSION
+   load_clin_files(project,dataset,dirnm)
 
 
 if __name__=="__main__":
