@@ -8,7 +8,7 @@ DEFAULT_SUFFIX='clinical'
 DEFAULT_DESCRIPTION='clinical data'
 DEFAULT_PROJECT ='idc-dev-etl'
 CURRENT_VERSION = 'idc_v9'
-DATASET=CURRENT_VERSION+'_tmpclinical'
+DATASET=CURRENT_VERSION+'_clinical'
 
 
 def create_meta_summary(project, dataset):
