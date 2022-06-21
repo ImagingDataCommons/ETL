@@ -13,17 +13,18 @@ from pathlib import Path
 import hashlib
 import pytz
 from datetime import datetime
+import os
 #import copy.deepcopy
 
 ORIGINAL_SRCS_PATH= '/Users/george/fed/actcianable/output/clinical_files/'
 NOTES_PATH = '/Users/george/fed/actcianable/output/'
 DEFAULT_SUFFIX='clinical'
 DEFAULT_DESCRIPTION='clinical data'
-DEFAULT_DATASET ='idc_v9_clinical'
+DEFAULT_DATASET ='idc_v10_clinical'
 DEFAULT_PROJECT ='idc-dev-etl'
-CURRENT_VERSION = 'idc_v9'
-LAST_VERSION = 'idc_v8'
-LAST_DATASET = 'idc_8_clinical'
+CURRENT_VERSION = 'idc_v10'
+LAST_VERSION = 'idc_v9'
+LAST_DATASET = 'idc_9_clinical'
 DESTINATION_FOLDER='./clin_'+CURRENT_VERSION+'/'
 
 def get_md5(filenm):
@@ -376,6 +377,7 @@ def export_meta_to_json(clinJson,filenm_meta,filenm_summary):
   metaArr=[]
   sumArr=[]
   for coll in clinJson:
+    colldir=coll.replace('/','_').replace(':','_')
     if 'dataset' in clinJson[coll]:
       dataset=clinJson[coll]['dataset']
     else:
@@ -395,6 +397,7 @@ def export_meta_to_json(clinJson,filenm_meta,filenm_summary):
           dtypeL=list(curDf.dtypes)
           ptId=curDic['ptId'][0][0]
           ptCol=curDic['ptId'][0][1]
+
 
           if 'tabletypes' in clinJson[coll]:
             suffix=list(clinJson[coll]['tabletypes'][k].keys())[0]
@@ -419,7 +422,7 @@ def export_meta_to_json(clinJson,filenm_meta,filenm_summary):
           for src in clinJson[coll]['mergeBatch'][k]['srcs']:
             nsrc = {}
             nsrc['srcs'] = src
-            rootfile = ORIGINAL_SRCS_PATH + coll + '/' + src[0]
+            rootfile = ORIGINAL_SRCS_PATH + colldir + '/' + src[0]
             nsrc['update_md5'] = get_md5(rootfile)
             src_info.append(nsrc)
 
@@ -471,10 +474,13 @@ def export_meta_to_json(clinJson,filenm_meta,filenm_summary):
             ndic['table_name'] = table_name
             ndic['table_description'] = table_description
             header = curDf.columns[i]
-            if (len(curDic['headers'][header])>0):
-              headerD = curDic['headers'][header][0]
-            else:
-              headerD={}
+            try:
+              if (len(curDic['headers'][header])>0):
+                headerD = curDic['headers'][header][0]
+              else:
+                headerD={}
+            except:
+              rrr=1
             dftype=str(dtypeL[i].name)
             try:
               ndic['variable_label']=headerD['attrs'][len(headerD['attrs'])-1]
@@ -571,17 +577,28 @@ def parse_acrin_collection(clinJson,coll):
   clinJson[coll]['mergeBatch']=[]
   clinJson[coll]['tabletypes']=[]
   #clinJson[coll]['dataset'] = webapp_coll+'_clinical'
+  colldir=coll.replace('/','_')
+  colldir=colldir.replace(':','_')
+  curDir= ORIGINAL_SRCS_PATH  + colldir
+
 
   if 'uzip' in clinJson[coll]:
+    if 'udir' in clinJson[coll]:
+      [shutil.rmtree(curDir+ '/'+d, ignore_errors=True) for d in clinJson[coll]['udir']]
     for zpfile in clinJson[coll]['uzip']:
-      zpfile = ORIGINAL_SRCS_PATH  + coll + '/' + zpfile
+      zpfile = curDir + '/' + zpfile
       with zipfile.ZipFile(zpfile) as zip_ref:
-        zip_ref.extractall(ORIGINAL_SRCS_PATH  + coll)
+        kk=1
+        zip_ref.extractall(ORIGINAL_SRCS_PATH  + colldir)
+
+    internalDirs=[d for d in os.listdir(curDir) if os.path.isdir(os.path.join(curDir,d))]
+    [os.rename(curDir+ '/'+d, curDir+ '/'+d.replace('/','_').replace(':','_')) for d in internalDirs]
+
     if 'udir' in clinJson[coll]:
       cdir = clinJson[coll]['udir'][0]
     else:
       cdir= path.splitext(clinJson[coll]['uzip'][0])[0]
-    npath = ORIGINAL_SRCS_PATH + coll + '/' +cdir
+    npath = curDir + '/' +cdir
     ofiles = [f for f in listdir(npath) if path.isfile(path.join(npath,f))]
     dictFile = [f for f in ofiles if 'Dictionary' in f][0]
 
@@ -592,7 +609,7 @@ def parse_acrin_collection(clinJson,coll):
       formFile = None
     dictFile= npath+'/'+dictFile
     if 'dictfile' in clinJson[coll]:
-      dictFile=ORIGINAL_SRCS_PATH + coll + '/' + clinJson[coll]['dictfile']
+      dictFile=curDir + '/' + clinJson[coll]['dictfile']
     parser=acrin_forms.DictionaryReader(dictFile,formFile)
     parser.parse_dictionaries()
     dict_names = parser.get_dictionary_names()
@@ -621,7 +638,7 @@ def parse_acrin_collection(clinJson,coll):
             ccdir = clinJson[coll]['udir'][1]
           else:
             ccdir = path.splitext(clinJson[coll]['uzip'][1])[0]
-          osrcf= ORIGINAL_SRCS_PATH + coll + '/' + ccdir + '/' +form_id+'.csv'
+          osrcf= ORIGINAL_SRCS_PATH + colldir + '/' + ccdir + '/' +form_id+'.csv'
           df2 = pd.read_csv(osrcf)
           ptId.append([0, df2.columns[0].lower()])
           df2.insert(0, 'source_batch', 1)
@@ -672,10 +689,11 @@ def parse_acrin_collection(clinJson,coll):
 
 
 def parse_conventional_collection(clinJson,coll):
+  colldir = coll.replace('/','_').replace(':','_')
   if 'uzip' in clinJson[coll]:
-    zpfile = ORIGINAL_SRCS_PATH + coll + '/' + clinJson[coll]['uzip']
+    zpfile = ORIGINAL_SRCS_PATH + colldir + '/' + clinJson[coll]['uzip']
     with zipfile.ZipFile(zpfile) as zip_ref:
-      zip_ref.extractall(ORIGINAL_SRCS_PATH + coll)
+      zip_ref.extractall(ORIGINAL_SRCS_PATH + colldir)
   if 'srcs' in clinJson[coll]:
     clinJson[coll]['cols'] = []
     for attrSetInd in range(len(clinJson[coll]['srcs'])):
@@ -686,12 +704,15 @@ def parse_conventional_collection(clinJson,coll):
       for batchSetInd in range(len(clinJson[coll]['srcs'][attrSetInd])):
         clinJson[coll]['cols'][attrSetInd].append([])
         clinJson[coll]['cols'][attrSetInd][batchSetInd] = {}
-        srcInfo = clinJson[coll]['srcs'][attrSetInd][batchSetInd]
+        try:
+          srcInfo = clinJson[coll]['srcs'][attrSetInd][batchSetInd]
+        except:
+          lll=1
         patientIdRow = (0 if not ('patientIdRow') in srcInfo else srcInfo['patientIdRow'])
         ptRowIds.append(patientIdRow)
         print("strcInfo " + str(srcInfo))
         if not ('type' in srcInfo) or not (srcInfo['type'] == 'json'):
-          [headers, df, sheetnm] = processSrc(ORIGINAL_SRCS_PATH, coll, srcInfo)
+          [headers, df, sheetnm] = processSrc(ORIGINAL_SRCS_PATH, colldir, srcInfo)
           #df['source_batch'] = batchSetInd
           df.insert(0, 'source_batch', batchSetInd)
           headers['source_batch'] = {'attrs':['NA'], 'colNo':-1}
@@ -718,11 +739,11 @@ def parse_conventional_collection(clinJson,coll):
           pass
         write_dataframe_to_json(DESTINATION_FOLDER, nm, clinJson[coll]['mergeBatch'][attrSetInd]['df'])
 
-    if not wJson and 'idc_webapp' in clinJson[coll]:
+    '''if not wJson and 'idc_webapp' in clinJson[coll]:
       mergeAcrossAttr(clinJson, coll)
       # recastDataFrameTypes(clinJson[coll]['df'], clinJson[coll]['ptIdSeq'][0][0][0])
       # analyzeDataFrame(clinJson[coll])
-      # write_dataframe_to_json('./clin/',coll,clinJson)
+      # write_dataframe_to_json('./clin/',coll,clinJson)'''
 
 if __name__=="__main__":
   dirpath = Path(DESTINATION_FOLDER)
@@ -732,6 +753,7 @@ if __name__=="__main__":
 
   #ORIGINAL_SRCS_PATH=sys.argv[1]
   clinJson =read_clin_file(NOTES_PATH+'clinical_notes.json')
+  #clinJson = read_clin_file(NOTES_PATH + 'temp.json')
   collec=list(clinJson.keys())
   collec.sort()
   client = bigquery.Client()
@@ -750,15 +772,16 @@ if __name__=="__main__":
   for colInd in range(len(collec)):
     coll=collec[colInd]
     if 'spec' in clinJson[coll]:
-      if clinJson[coll]['spec'] == 'acrin':
-        parse_acrin_collection(clinJson,coll)
+      if (clinJson[coll]['spec'] == 'ignore') or (clinJson[coll]['spec'] == 'error'):
         pass
+      elif clinJson[coll]['spec'] == 'acrin':
+        pass
+        #parse_acrin_collection(clinJson,coll)
     else:
-      pass
       parse_conventional_collection(clinJson, coll)
 
-  clin_meta=  CURRENT_VERSION +'_clinical_meta_column.json'
-  clin_summary = CURRENT_VERSION +'_clinical_meta_table.json'
+  clin_meta=  CURRENT_VERSION +'_column_metadata.json'
+  clin_summary = CURRENT_VERSION +'_table_metadata.json'
   export_meta_to_json(clinJson,clin_meta,clin_summary)
   i=1
 
