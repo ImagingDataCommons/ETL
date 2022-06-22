@@ -7,15 +7,15 @@ import sys
 DEFAULT_SUFFIX='clinical'
 DEFAULT_DESCRIPTION='clinical data'
 DEFAULT_PROJECT ='idc-dev-etl'
-CURRENT_VERSION = 'idc_v9'
+CURRENT_VERSION = 'idc_v10'
 DATASET=CURRENT_VERSION+'_clinical'
 
 
 def create_meta_summary(project, dataset):
   client = bigquery.Client(project=project)
   dataset_id= project+"."+dataset
-  table_id = dataset_id+".clinical_meta_table"
-  filenm=CURRENT_VERSION+"_clinical_meta_table.json"
+  table_id = dataset_id+".table_metadata"
+  filenm=CURRENT_VERSION+"_table_metadata.json"
 
   schema = [
           bigquery.SchemaField("collection_id","STRING"),
@@ -64,7 +64,7 @@ def create_meta_table(project, dataset):
 
   client = bigquery.Client(project=project)
   dataset_id= project+"."+dataset
-  table_id = dataset_id+".clinical_meta_column"
+  table_id = dataset_id+".column_metadata"
 
   schema = [
             bigquery.SchemaField("collection_id","STRING"),
@@ -101,7 +101,7 @@ def create_meta_table(project, dataset):
 
 def load_meta(project, dataset, filenm):
   client = bigquery.Client(project=project)
-  table_id=project+"."+dataset+".clinical_meta_column"
+  table_id=project+"."+dataset+".column_metadata"
   table=bigquery.Table(table_id)
 
   job_config = bigquery.LoadJobConfig(source_format=bigquery.SourceFormat.NEWLINE_DELIMITED_JSON)
@@ -114,6 +114,7 @@ def load_meta(project, dataset, filenm):
     print(job.result())
 
 def load_clin_files(project, dataset,cpath):
+  error_sets=[]  
   client = bigquery.Client(project=project)
   ofiles = [f for f in listdir(cpath) if isfile(join(cpath,f))]
   dataset_created={}
@@ -123,17 +124,7 @@ def load_clin_files(project, dataset,cpath):
     file_ext = splitext(ofile)[1]
     print(collec+" "+file_ext)
     if file_ext=='.csv':
-        #rcollecSp=ofile[::-1].split('_',1)
-        #dataset_nm=rcollecSp[1][::-1]
-        #collec=rcollecSp[0][::-1].replace('.csv','')
 
-        #if not dataset_nm in dataset_created:
-        #  dataset_id=project+"."+dataset_nm
-        #  cdataset = bigquery.Dataset(dataset_id)
-        #  cdataset.location='US'
-        #  client.delete_dataset(dataset_id,delete_contents=True,not_found_ok=True)
-        #  cdataset=client.create_dataset(cdataset)
-        #  dataset_created[dataset_nm]=1
         table_id=project+"."+dataset+"."+collec
         job_config=bigquery.LoadJobConfig(autodetect=True,source_format=bigquery.SourceFormat.CSV)
         print(cfile)
@@ -162,14 +153,20 @@ def load_clin_files(project, dataset,cpath):
       client.delete_table(table_id,not_found_ok=True)
       table=bigquery.Table(table_id)
       job_config =bigquery.LoadJobConfig(source_format=bigquery.SourceFormat.NEWLINE_DELIMITED_JSON, schema=schema)
-      job= client.load_table_from_json(cdata, table, job_config=job_config)    
-      print(job.result())
-    
+      try:
+        job= client.load_table_from_json(cdata, table, job_config=job_config)    
+      
+        print(job.result())
+      except:
+        error_sets.append(collec)        
+  print('error sets')
+  print(str(error_sets)) 
+
 def load_all(project,dataset):
    #pass
    create_meta_summary(project, dataset) 
    create_meta_table(project, dataset)
-   filenm="./"+CURRENT_VERSION+"_clinical_meta_column.json"
+   filenm="./"+CURRENT_VERSION+"_column_metadata.json"
    #filenm="./ntmp2.json"
    print(filenm)
    load_meta(project,dataset,filenm)
