@@ -3,6 +3,7 @@ import json
 from os import listdir
 from os.path import isfile,join,splitext
 import sys
+from addcptac import get_cptac, create_table_meta_cptac_row, create_column_meta_cptac_rows, copy_cptac
 
 DEFAULT_SUFFIX='clinical'
 DEFAULT_DESCRIPTION='clinical data'
@@ -11,7 +12,7 @@ CURRENT_VERSION = 'idc_v10'
 DATASET=CURRENT_VERSION+'_clinical'
 
 
-def create_meta_summary(project, dataset):
+def create_meta_summary(project, dataset,cptac):
   client = bigquery.Client(project=project)
   dataset_id= project+"."+dataset
   table_id = dataset_id+".table_metadata"
@@ -58,6 +59,11 @@ def create_meta_summary(project, dataset):
   #filenm="temp.json"
   f=open(filenm,"r")
   metaD=json.load(f)
+  print(metaD)
+  cptacRow = create_table_meta_cptac_row(cptac)
+  print(cptacRow)
+  metaD.append(cptacRow)
+  print(metaD)
   f.close()
   job=client.load_table_from_json(metaD, table, job_config=job_config)
   print(job.result())
@@ -166,14 +172,16 @@ def load_clin_files(project, dataset,cpath):
 
 def load_all(project,dataset):
    #pass
-   create_meta_summary(project, dataset) 
-   create_meta_table(project, dataset)
+   cptac=get_cptac()
+   copy_cptac()
+   create_meta_summary(project, dataset,cptac) 
+   #create_meta_table(project, dataset,cptac)
    filenm="./"+CURRENT_VERSION+"_column_metadata.json"
    #filenm="./ntmp2.json"
    print(filenm)
-   load_meta(project,dataset,filenm)
+   #load_meta(project,dataset,filenm)
    dirnm="./clin_"+CURRENT_VERSION
-   load_clin_files(project,dataset,dirnm)
+   #load_clin_files(project,dataset,dirnm)
 
 
 if __name__=="__main__":
