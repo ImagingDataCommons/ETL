@@ -37,6 +37,8 @@ def create_meta_summary(project, dataset):
               bigquery.SchemaField("added_md5","STRING"),
               bigquery.SchemaField("prior_md5","STRING"),
               bigquery.SchemaField("update_md5","STRING"),
+              bigquery.SchemaField("table_last_modified", "STRING"),
+              bigquery.SchemaField("table_size", "INTEGER"),
             ]  
           ),
           bigquery.SchemaField("dataset","STRING"),

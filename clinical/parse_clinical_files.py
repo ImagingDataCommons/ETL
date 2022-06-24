@@ -14,6 +14,7 @@ import hashlib
 import pytz
 from datetime import datetime
 import os
+from utils import getHist, read_clin_file
 #import copy.deepcopy
 
 ORIGINAL_SRCS_PATH= '/Users/george/fed/actcianable/output/clinical_files/'
@@ -23,8 +24,8 @@ DEFAULT_DESCRIPTION='clinical data'
 DEFAULT_DATASET ='idc_v10_clinical'
 DEFAULT_PROJECT ='idc-dev-etl'
 CURRENT_VERSION = 'idc_v10'
-LAST_VERSION = 'idc_v9'
-LAST_DATASET = 'idc_9_clinical'
+LAST_VERSION = 'idc_v10'
+LAST_DATASET = 'idc_v10_clinical'
 DESTINATION_FOLDER='./clin_'+CURRENT_VERSION+'/'
 
 def get_md5(filenm):
@@ -68,11 +69,7 @@ def write_dataframe_to_json(path,nm,df):
   f.close()
 
 
-def read_clin_file(filenm):
-  f =open(filenm,'r')
-  clinJson=json.load(f)
-  f.close()
-  return clinJson
+
 
 def write_clin_file(filenm, data):
 
@@ -348,11 +345,13 @@ def mergeAcrossBatch(clinJson,coll,ptRowIds,attrSetInd,colsAdded):
   clinJson[coll]['mergeBatch'][attrSetInd]['df'] = df_all_rows
   clinJson[coll]['mergeBatch'][attrSetInd]['headers']['source_batch']=[]
 
+
 def export_meta_to_json(clinJson,filenm_meta,filenm_summary):
 
   hist ={}
-  table_id = DEFAULT_PROJECT + "." + LAST_DATASET + '.clinical_summary'
-  query = "select * from `" + table_id + "`"
+  table_id = DEFAULT_PROJECT + "." + LAST_DATASET + '.table_metadata'
+  getHist(hist, table_id)
+  '''query = "select * from `" + table_id + "`"
 
   try:
     job = client.query(query)
@@ -373,7 +372,7 @@ def export_meta_to_json(clinJson,filenm_meta,filenm_summary):
       hist[tbl]=cdic
   except:
     pass
-
+'''
   metaArr=[]
   sumArr=[]
   for coll in clinJson:
@@ -398,7 +397,6 @@ def export_meta_to_json(clinJson,filenm_meta,filenm_summary):
           ptId=curDic['ptId'][0][0]
           ptCol=curDic['ptId'][0][1]
 
-
           if 'tabletypes' in clinJson[coll]:
             suffix=list(clinJson[coll]['tabletypes'][k].keys())[0]
             table_description = clinJson[coll]['tabletypes'][k][suffix]
@@ -414,10 +412,6 @@ def export_meta_to_json(clinJson,filenm_meta,filenm_summary):
             pass
           num_batches = len(clinJson[coll]['mergeBatch'][k]['srcs'])
 
-          sumDic['collection_id']=collection_id
-          sumDic['table_name']=table_name
-          sumDic['post_process_src'] = post_process_src
-
           src_info = []
           for src in clinJson[coll]['mergeBatch'][k]['srcs']:
             nsrc = {}
@@ -425,6 +419,10 @@ def export_meta_to_json(clinJson,filenm_meta,filenm_summary):
             rootfile = ORIGINAL_SRCS_PATH + colldir + '/' + src[0]
             nsrc['update_md5'] = get_md5(rootfile)
             src_info.append(nsrc)
+
+          sumDic['collection_id'] = collection_id
+          sumDic['table_name'] = table_name
+          sumDic['post_process_src'] = post_process_src
 
           if table_name in hist:
             for nkey in hist[table_name]:
@@ -776,7 +774,7 @@ if __name__=="__main__":
         pass
       elif clinJson[coll]['spec'] == 'acrin':
         pass
-        #parse_acrin_collection(clinJson,coll)
+        parse_acrin_collection(clinJson,coll)
     else:
       parse_conventional_collection(clinJson, coll)
 
