@@ -8,9 +8,11 @@ from addcptac import get_cptac, create_table_meta_cptac_row, create_column_meta_
 DEFAULT_SUFFIX='clinical'
 DEFAULT_DESCRIPTION='clinical data'
 DEFAULT_PROJECT ='idc-dev-etl'
-CURRENT_VERSION = 'idc_v10'
-DATASET=CURRENT_VERSION+'_clinical'
 
+DEFAULT_PROJECT ='idc-dev'
+CURRENT_VERSION = 'idc_v10'
+#DATASET=CURRENT_VERSION+'_clinical'
+DATASET='gw_temp'
 
 def create_meta_summary(project, dataset,cptac):
   client = bigquery.Client(project=project)
@@ -59,12 +61,9 @@ def create_meta_summary(project, dataset,cptac):
   #filenm="temp.json"
   f=open(filenm,"r")
   metaD=json.load(f)
-  print(metaD)
-  cptacRow = create_table_meta_cptac_row(cptac)
-  print(cptacRow)
-  metaD.append(cptacRow)
-  print(metaD)
   f.close()
+  cptacRow = create_table_meta_cptac_row(cptac)
+  metaD.extend(cptacRow)
   job=client.load_table_from_json(metaD, table, job_config=job_config)
   print(job.result())
 
@@ -107,7 +106,7 @@ def create_meta_table(project, dataset):
   table = bigquery.Table(table_id, schema=schema)
   client.create_table(table)
 
-def load_meta(project, dataset, filenm):
+def load_meta(project, dataset, filenm,cptac):
   client = bigquery.Client(project=project)
   table_id=project+"."+dataset+".column_metadata"
   table=bigquery.Table(table_id)
@@ -118,6 +117,9 @@ def load_meta(project, dataset, filenm):
     f=open(filenm,'r')
     metaD=json.load(f)
     f.close()
+    cptacRows = create_column_meta_cptac_rows(cptac)
+    metaD.extend(cptacRows)
+    #metaD=cptacRows
     job=client.load_table_from_json(metaD, table, job_config=job_config)
     print(job.result())
 
@@ -173,13 +175,13 @@ def load_clin_files(project, dataset,cpath):
 def load_all(project,dataset):
    #pass
    cptac=get_cptac()
+   create_meta_summary(project, dataset,cptac)
    copy_cptac()
-   create_meta_summary(project, dataset,cptac) 
-   #create_meta_table(project, dataset,cptac)
+   create_meta_table(project, dataset)
    filenm="./"+CURRENT_VERSION+"_column_metadata.json"
    #filenm="./ntmp2.json"
    print(filenm)
-   #load_meta(project,dataset,filenm)
+   load_meta(project,dataset,filenm,cptac)
    dirnm="./clin_"+CURRENT_VERSION
    #load_clin_files(project,dataset,dirnm)
 

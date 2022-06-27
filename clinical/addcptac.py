@@ -6,10 +6,10 @@ import pytz
 
 DEFAULT_SUFFIX='clinical'
 DEFAULT_DESCRIPTION='clinical data'
-DEFAULT_DATASET ='idc_v10_clinical'
-DEFAULT_PROJECT ='idc-dev-etl'
-#DEFAULT_DATASET ='gw_temp'
-#DEFAULT_PROJECT ='idc-dev'
+#DEFAULT_DATASET ='idc_v10_clinical'
+#DEFAULT_PROJECT ='idc-dev-etl'
+DEFAULT_DATASET ='gw_temp'
+DEFAULT_PROJECT ='idc-dev'
 CURRENT_VERSION = 'idc_v10'
 LAST_VERSION = 'idc_v10'
 LAST_DATASET = 'idc_v10_clinical'
@@ -85,12 +85,16 @@ def create_column_meta_cptac_rows(cptac):
     fieldSet[nm]=True
     type = field.field_type
     curRec['collection_id']=str(cptac)
+    if nm == "submitter_id":
+      curRec['case_col']=True
+    else:
+      curRec['case_col']=False
     curRec['table_name']='cptac_clinical'
     curRec['table_description']='clinical_data'
     curRec['variable_name'] = nm
     curRec['variable_label'] = nm
     curRec['data_type']=type
-    curRec['batch']=0
+    curRec['batch']=[0]
     newArr.append(curRec)
 
   query = "select * from `" + src_table_id + "`"
