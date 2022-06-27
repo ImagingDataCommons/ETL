@@ -8,8 +8,6 @@ DEFAULT_SUFFIX='clinical'
 DEFAULT_DESCRIPTION='clinical data'
 DEFAULT_DATASET ='idc_v10_clinical'
 DEFAULT_PROJECT ='idc-dev-etl'
-#DEFAULT_DATASET ='gw_temp'
-#DEFAULT_PROJECT ='idc-dev'
 CURRENT_VERSION = 'idc_v10'
 LAST_VERSION = 'idc_v10'
 LAST_DATASET = 'idc_v10_clinical'
@@ -49,6 +47,9 @@ def create_table_meta_cptac_row(cptac):
   sumDic['source_info'][0]['table_last_modified']=table_last_modified
   sumDic['source_info'][0]['table_size'] = table_size
   sumDic['source_info'][0]['srcs']=[src_table_id]
+
+  sumDic['dataset']=''
+  sumDic['project']=''
 
   if table_name in hist:
     for nkey in hist[table_name]:

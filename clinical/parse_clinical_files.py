@@ -21,10 +21,16 @@ ORIGINAL_SRCS_PATH= '/Users/george/fed/actcianable/output/clinical_files/'
 NOTES_PATH = '/Users/george/fed/actcianable/output/'
 DEFAULT_SUFFIX='clinical'
 DEFAULT_DESCRIPTION='clinical data'
+<<<<<<< HEAD
 DEFAULT_DATASET ='idc_v10_clinical'
 DEFAULT_PROJECT ='idc-dev-etl'
 #DEFAULT_DATASET ='gw_temp'
 #DEFAULT_PROJECT ='idc-dev'
+=======
+
+DEFAULT_DATASET =''
+DEFAULT_PROJECT =''
+>>>>>>> bb04caefe72fd8ceda8795e914111ff4c1255b8c
 CURRENT_VERSION = 'idc_v10'
 LAST_VERSION = 'idc_v9'
 LAST_DATASET = 'idc_v9_clinical'
@@ -353,28 +359,6 @@ def export_meta_to_json(clinJson,filenm_meta,filenm_summary):
   hist ={}
   table_id = DEFAULT_PROJECT + "." + LAST_DATASET + '.table_metadata'
   getHist(hist, table_id)
-  '''query = "select * from `" + table_id + "`"
-
-  try:
-    job = client.query(query)
-
-    for row in job.result():
-      tbl = row['table_name']
-      cdic={}
-      cdic['idc_version_table_added'] = row['idc_version_table_added']
-      cdic['table_added_datetime'] = row['table_added_datetime']
-      cdic['post_process_src'] = row['post_process_src']
-      cdic['post_process_src_added_md5'] = row['post_process_src_added_md5']
-      cdic['idc_version_table_prior'] = row['idc_version_table_prior']
-      cdic['post_process_src_prior_md5'] = row['post_process_src_prior_md5']
-      cdic['idc_version_table_updated'] = row['idc_version_table_updated']
-      cdic['post_process_src_updated_md5'] = row['post_process_src_updated_md5']
-      cdic['number_batches'] = row['number_batches']
-      cdic['source_info']=row['source_info']
-      hist[tbl]=cdic
-  except:
-    pass
-'''
   metaArr=[]
   sumArr=[]
   for coll in clinJson:
