@@ -9,10 +9,8 @@ DEFAULT_SUFFIX='clinical'
 DEFAULT_DESCRIPTION='clinical data'
 DEFAULT_PROJECT ='idc-dev-etl'
 
-DEFAULT_PROJECT ='idc-dev'
 CURRENT_VERSION = 'idc_v10'
-#DATASET=CURRENT_VERSION+'_clinical'
-DATASET='gw_temp'
+DATASET=CURRENT_VERSION+'_clinical'
 
 def create_meta_summary(project, dataset,cptac):
   client = bigquery.Client(project=project)
@@ -47,18 +45,15 @@ def create_meta_summary(project, dataset,cptac):
           bigquery.SchemaField("dataset","STRING"),
           bigquery.SchemaField("project","STRING")
            ] 
-         
 
   dataset=bigquery.Dataset(dataset_id)
   dataset.location='US'
   client.delete_dataset(dataset_id,delete_contents=True,not_found_ok=True)
   dataset=client.create_dataset(dataset)
-
   client.delete_table(table_id,not_found_ok=True)
   table = bigquery.Table(table_id, schema=schema)
   client.create_table(table)
   job_config=bigquery.LoadJobConfig(source_format=bigquery.SourceFormat.NEWLINE_DELIMITED_JSON, schema=schema)
-  #filenm="temp.json"
   f=open(filenm,"r")
   metaD=json.load(f)
   f.close()
@@ -97,7 +92,6 @@ def create_meta_table(project, dataset):
            bigquery.SchemaField("sheet_names","STRING",mode="REPEATED"),
            bigquery.SchemaField("batch", "INTEGER",mode="REPEATED"),
            bigquery.SchemaField("column_numbers", "INTEGER", mode="REPEATED")
-               
            ] 
   
   dataset=bigquery.Dataset(dataset_id)
@@ -165,7 +159,6 @@ def load_clin_files(project, dataset,cpath):
       job_config =bigquery.LoadJobConfig(source_format=bigquery.SourceFormat.NEWLINE_DELIMITED_JSON, schema=schema)
       try:
         job= client.load_table_from_json(cdata, table, job_config=job_config)    
-      
         print(job.result())
       except:
         error_sets.append(collec)        
@@ -173,24 +166,16 @@ def load_clin_files(project, dataset,cpath):
   print(str(error_sets)) 
 
 def load_all(project,dataset):
-   #pass
    cptac=get_cptac()
    create_meta_summary(project, dataset,cptac)
    copy_cptac()
    create_meta_table(project, dataset)
    filenm="./"+CURRENT_VERSION+"_column_metadata.json"
-   #filenm="./ntmp2.json"
-   print(filenm)
    load_meta(project,dataset,filenm,cptac)
    dirnm="./clin_"+CURRENT_VERSION
-   #load_clin_files(project,dataset,dirnm)
+   load_clin_files(project,dataset,dirnm)
 
 
 if __name__=="__main__":
-  #client = bigquery.Client(project="idc-dev-etl")
-  #dataset_id="idc-dev-etl.acrin_nlsc_fdg_pet_ct"
-  #dataset=bigquery.Dataset(dataset_id)
-  #dataset.location='US'
-  #client.delete_dataset(dataset_id,delete_contents=True,not_found_ok=True)
   load_all(DEFAULT_PROJECT, DATASET)
 
