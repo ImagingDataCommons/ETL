@@ -500,7 +500,7 @@ def export_meta_to_json(clinJson,filenm_meta,filenm_summary):
                 ndic['sheet_names'].append('')
                 pass
               try:
-                ndic['files'].append( {'name': headerInfo['filenm']} )
+                ndic['files'].append( headerInfo['filenm'])
               except:
                 pass
 
