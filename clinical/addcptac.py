@@ -42,14 +42,12 @@ def create_table_meta_cptac_row(cptac):
   table_name = 'cptac_clinical'
   sumDic['collection_id'] = collection_id
   sumDic['table_name'] = table_name
+  sumDic['table_description'] = 'clinical_data'
   sumDic['source_info']=[]
   sumDic['source_info'].append({})
   sumDic['source_info'][0]['table_last_modified']=table_last_modified
   sumDic['source_info'][0]['table_size'] = table_size
   sumDic['source_info'][0]['srcs']=[src_table_id]
-
-  sumDic['dataset']=''
-  sumDic['project']=''
 
   if table_name in hist:
     for nkey in hist[table_name]:
@@ -91,7 +89,6 @@ def create_column_meta_cptac_rows(cptac):
     else:
       curRec['case_col']=False
     curRec['table_name']='cptac_clinical'
-    curRec['table_description']='clinical_data'
     curRec['variable_name'] = nm
     curRec['variable_label'] = nm
     curRec['data_type']=type

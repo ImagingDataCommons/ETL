@@ -21,6 +21,7 @@ def create_meta_summary(project, dataset,cptac):
   schema = [
           bigquery.SchemaField("collection_id","STRING"),
           bigquery.SchemaField("table_name","STRING"),
+          bigquery.SchemaField("table_description", "STRING"),
           bigquery.SchemaField("idc_version_table_added", "STRING"),
           bigquery.SchemaField("table_added_datetime", "STRING"),
           bigquery.SchemaField("post_process_src","STRING"),
@@ -42,8 +43,7 @@ def create_meta_summary(project, dataset,cptac):
               bigquery.SchemaField("table_size", "INTEGER"),
             ]  
           ),
-          bigquery.SchemaField("dataset","STRING"),
-          bigquery.SchemaField("project","STRING")
+
            ] 
 
   dataset=bigquery.Dataset(dataset_id)
@@ -72,7 +72,6 @@ def create_meta_table(project, dataset):
             bigquery.SchemaField("collection_id","STRING"),
             bigquery.SchemaField("case_col","BOOLEAN"),
             bigquery.SchemaField("table_name","STRING"),
-            bigquery.SchemaField("table_description", "STRING"),
             bigquery.SchemaField("variable_name","STRING"),
             bigquery.SchemaField("variable_label","STRING"),
             bigquery.SchemaField("data_type","STRING"),

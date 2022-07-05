@@ -21,16 +21,8 @@ ORIGINAL_SRCS_PATH= '/Users/george/fed/actcianable/output/clinical_files/'
 NOTES_PATH = '/Users/george/fed/actcianable/output/'
 DEFAULT_SUFFIX='clinical'
 DEFAULT_DESCRIPTION='clinical data'
-<<<<<<< HEAD
 DEFAULT_DATASET ='idc_v10_clinical'
 DEFAULT_PROJECT ='idc-dev-etl'
-#DEFAULT_DATASET ='gw_temp'
-#DEFAULT_PROJECT ='idc-dev'
-=======
-
-DEFAULT_DATASET =''
-DEFAULT_PROJECT =''
->>>>>>> bb04caefe72fd8ceda8795e914111ff4c1255b8c
 CURRENT_VERSION = 'idc_v10'
 LAST_VERSION = 'idc_v9'
 LAST_DATASET = 'idc_v9_clinical'
@@ -408,6 +400,7 @@ def export_meta_to_json(clinJson,filenm_meta,filenm_summary):
 
           sumDic['collection_id'] = collection_id
           sumDic['table_name'] = table_name
+          sumDic['table_description'] = table_description
           sumDic['post_process_src'] = post_process_src
 
           if table_name in hist:
@@ -445,8 +438,7 @@ def export_meta_to_json(clinJson,filenm_meta,filenm_summary):
               src_info[i]['prior_md5'] = src_info[i]['update_md5']
 
           sumDic['source_info']=src_info
-          sumDic['project'] = project
-          sumDic['dataset'] = dataset
+
           sumArr.append(sumDic)
           for i in range(len(curDf.columns)):
             ndic = {}
@@ -456,7 +448,6 @@ def export_meta_to_json(clinJson,filenm_meta,filenm_summary):
               ndic['case_col'] = 'no'
             ndic['collection_id'] = collection_id
             ndic['table_name'] = table_name
-            ndic['table_description'] = table_description
             header = curDf.columns[i]
             try:
               if (len(curDic['headers'][header])>0):
