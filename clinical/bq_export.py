@@ -83,11 +83,7 @@ def create_meta_table(project, dataset):
                   bigquery.SchemaField("option_description","STRING"),
              ],
             ),
-           bigquery.SchemaField("files", "RECORD", mode="REPEATED",
-               fields=[
-                   bigquery.SchemaField("name","STRING")
-                   ],
-               ),
+           bigquery.SchemaField("files", "STRING", mode="REPEATED"),
            bigquery.SchemaField("sheet_names","STRING",mode="REPEATED"),
            bigquery.SchemaField("batch", "INTEGER",mode="REPEATED"),
            bigquery.SchemaField("column_numbers", "INTEGER", mode="REPEATED")
