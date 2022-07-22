@@ -4,15 +4,10 @@ from datetime import datetime,date
 from utils import getHist, read_clin_file
 import pytz
 
-DEFAULT_SUFFIX='clinical'
-DEFAULT_DESCRIPTION='clinical data'
-DEFAULT_DATASET ='idc_v10_clinical'
-DEFAULT_PROJECT ='idc-dev-etl'
-CURRENT_VERSION = 'idc_v10'
-LAST_VERSION = 'idc_v10'
-LAST_DATASET = 'idc_v10_clinical'
-DESTINATION_FOLDER='./clin_'+CURRENT_VERSION+'/'
+DEFAULT_SUFFIX="clinical"
+DEFAULT_DESCRIPTION="clinical data"
 CPTAC_SRC='isb-cgc-bq.CPTAC.clinical_gdc_current'
+IDC_COLLECTION_ID_SRC='`idc-dev-etl.idc_current.original_collections_metadata`'
 
 def json_serial(obj):
     """JSON serializer for objects not serializable by default json code"""
@@ -22,7 +17,7 @@ def json_serial(obj):
     raise TypeError ("Type %s not serializable" % type(obj))
 
 
-def create_table_meta_cptac_row(cptac):
+def create_table_meta_cptac_row(cptac,dataset_id,version):
   src_table_id = CPTAC_SRC
   client = bigquery.Client()
   src_table = client.get_table(src_table_id)
@@ -30,7 +25,7 @@ def create_table_meta_cptac_row(cptac):
   table_size = str(src_table.num_bytes)
 
   hist={}
-  table_id = DEFAULT_PROJECT + '.' + LAST_DATASET + '.table_metadata'
+  table_id = dataset_id + '.table_metadata'
   getHist(hist, table_id)
 
   sumArr=[]
@@ -57,21 +52,21 @@ def create_table_meta_cptac_row(cptac):
       old_table_size=sumDic['source_info']['table_size']
       if not (old_table_modified == table_last_modified):
         sumDic['idc_version_table_prior']=sumDic['idc_version_table_updated']
-        sumDic['idc_version_table_updated'] = CURRENT_VERSION
+        sumDic['idc_version_table_updated'] = version
         sumDic['table_updated_datetime'] = str(datetime.now(pytz.utc))
   else:
-    sumDic['idc_version_table_added'] = CURRENT_VERSION
+    sumDic['idc_version_table_added'] = version
     sumDic['table_added_datetime'] = str(datetime.now(pytz.utc))
-    sumDic['idc_version_table_prior'] = CURRENT_VERSION
-    sumDic['idc_version_table_updated'] = CURRENT_VERSION
+    sumDic['idc_version_table_prior'] = version
+    sumDic['idc_version_table_updated'] = version
     sumDic['table_updated_datetime'] = str(datetime.now(pytz.utc))
     sumDic['number_batches'] = 0
   sumArr.append(sumDic)
   return sumArr
 
 
-def create_column_meta_cptac_rows(cptac):
-  src_table_id = DEFAULT_PROJECT + '.' + DEFAULT_DATASET + '.cptac_clinical'
+def create_column_meta_cptac_rows(cptac,dataset):
+  src_table_id = dataset + '.cptac_clinical'
   client = bigquery.Client()
   src_table = client.get_table(src_table_id)
   newArr=[]
@@ -114,7 +109,7 @@ def create_column_meta_cptac_rows(cptac):
       rec['values'] = [{"option_code":x} for x in valSet[rec['variable_name']]]
   return newArr
 
-def copy_cptac():
+def copy_cptac(dataset_id):
   src_table_id = CPTAC_SRC 
   client = bigquery.Client()
   src_table = client.get_table(src_table_id)
@@ -122,7 +117,7 @@ def copy_cptac():
           bigquery.SchemaField("source_batch","INTEGER")]
   nschema.extend(src_table.schema)
 
-  dest_table_id = DEFAULT_PROJECT + '.' + DEFAULT_DATASET + '.cptac_clinical'
+  dest_table_id = dataset_id + '.cptac_clinical'
   client.delete_table(dest_table_id, not_found_ok=True)
 
   query = "select submitter_id as dicom_patient_id, 0 as source_batch, * from `" + src_table_id + "`"
@@ -132,10 +127,10 @@ def copy_cptac():
 
 
 
-def get_cptac():
+def get_cptac_ids():
   cptac=[]
   client = bigquery.Client()
-  query = "select tcia_api_collection_id, tcia_wiki_collection_id, idc_webapp_collection_id from `idc-dev-etl.idc_current.original_collections_metadata` order by `tcia_wiki_collection_id`"
+  query = "select tcia_api_collection_id, tcia_wiki_collection_id, idc_webapp_collection_id from "+IDC_COLLECTION_ID_SRC+" order by `tcia_wiki_collection_id`"
   job = client.query(query)
   cptac=[]
 
@@ -149,10 +144,5 @@ def get_cptac():
   return cptac
 
 if __name__=="__main__":
-  cptac=get_cptac()  
-  print(cptac)
-  urow = create_table_meta_cptac_row(cptac)
-  print(urow)
-  copy_cptac()
-  cm=create_column_meta_cptac_rows(cptac)
-  print(len(cm))
+  cptac=get_cptac_ids()
+

@@ -3,13 +3,18 @@ import json
 from os import listdir
 from os.path import isfile,join,splitext
 import sys
-from addcptac import get_cptac, create_table_meta_cptac_row, create_column_meta_cptac_rows, copy_cptac
+from addcptac import get_cptac_ids, create_table_meta_cptac_row, create_column_meta_cptac_rows, copy_cptac
 
 DEFAULT_SUFFIX='clinical'
 DEFAULT_DESCRIPTION='clinical data'
-DEFAULT_PROJECT ='idc-dev-etl'
 
+DEFAULT_PROJECT ='idc-dev-etl'
 CURRENT_VERSION = 'idc_v10'
+
+DEFAULT_PROJECT ='idc-dev'
+#CURRENT_VERSION = 'gw_temp'
+
+
 DATASET=CURRENT_VERSION+'_clinical'
 
 def create_meta_summary(project, dataset,cptac):
@@ -57,7 +62,7 @@ def create_meta_summary(project, dataset,cptac):
   f=open(filenm,"r")
   metaD=json.load(f)
   f.close()
-  cptacRow = create_table_meta_cptac_row(cptac)
+  cptacRow = create_table_meta_cptac_row(cptac, dataset_id, CURRENT_VERSION)
   metaD.extend(cptacRow)
   job=client.load_table_from_json(metaD, table, job_config=job_config)
   print(job.result())
@@ -101,8 +106,9 @@ def create_meta_table(project, dataset):
 
 def load_meta(project, dataset, filenm,cptac):
   client = bigquery.Client(project=project)
-  table_id=project+"."+dataset+".column_metadata"
-  table=bigquery.Table(table_id)
+  dataset_id = project+"."+dataset
+  table_id = dataset_id+".column_metadata"
+  table = bigquery.Table(table_id)
 
   job_config = bigquery.LoadJobConfig(source_format=bigquery.SourceFormat.NEWLINE_DELIMITED_JSON)
 
@@ -110,10 +116,13 @@ def load_meta(project, dataset, filenm,cptac):
     f=open(filenm,'r')
     metaD=json.load(f)
     f.close()
-    cptacRows = create_column_meta_cptac_rows(cptac)
-    metaD.extend(cptacRows)
+    cptacRows = create_column_meta_cptac_rows(cptac, dataset_id)
+    #metaD.extend(cptacRows)
     #metaD=cptacRows
-    job=client.load_table_from_json(metaD, table, job_config=job_config)
+    for met in metaD:
+      if not isinstance(met['files'],list):
+        print('huh')
+    job=client.load_table_from_json(metaD[0:10], table, job_config=job_config)
     print(job.result())
 
 def load_clin_files(project, dataset,cpath):
@@ -127,7 +136,6 @@ def load_clin_files(project, dataset,cpath):
     file_ext = splitext(ofile)[1]
     print(collec+" "+file_ext)
     if file_ext=='.csv':
-
         table_id=project+"."+dataset+"."+collec
         job_config=bigquery.LoadJobConfig(autodetect=True,source_format=bigquery.SourceFormat.CSV)
         print(cfile)
@@ -164,15 +172,18 @@ def load_clin_files(project, dataset,cpath):
   print('error sets')
   print(str(error_sets)) 
 
+
+
+
 def load_all(project,dataset):
-   cptac=get_cptac()
+   cptac=get_cptac_ids()
    create_meta_summary(project, dataset,cptac)
-   copy_cptac()
+   copy_cptac(project+"."+dataset)
    create_meta_table(project, dataset)
    filenm="./"+CURRENT_VERSION+"_column_metadata.json"
    load_meta(project,dataset,filenm,cptac)
    dirnm="./clin_"+CURRENT_VERSION
-   load_clin_files(project,dataset,dirnm)
+   #load_clin_files(project,dataset,dirnm)
 
 
 if __name__=="__main__":
