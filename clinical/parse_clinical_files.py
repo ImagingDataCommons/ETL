@@ -637,7 +637,7 @@ def parse_acrin_collection(clinJson,coll):
               ind = colnames[kk].index(orig_nm)
               hndic={}
               if orig_nm == SOURCE_BATCH_COL:
-                hndic['attrs']=SOURCE_BATCH_LABEL
+                hndic['attrs']=[SOURCE_BATCH_LABEL]
               else:
                 hndic['attrs']=[orig_nm]
                 hndic['colNo'] = ind
