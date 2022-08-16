@@ -349,7 +349,7 @@ def mergeAcrossBatch(clinJson,coll,ptRowIds,attrSetInd,colsAdded):
   clinJson[coll]['mergeBatch'][attrSetInd]['cList'] = cList
   clinJson[coll]['mergeBatch'][attrSetInd]['df'] = df_all_rows
   #clinJson[coll]['mergeBatch'][attrSetInd]['headers']['source_batch']=[]
-  clinJson[coll]['mergeBatch'][attrSetInd]['headers']['source_batch']=[{'attrs':[SOURCE_BATCH_LABEL]}]
+  clinJson[coll]['mergeBatch'][attrSetInd]['headers'][SOURCE_BATCH_COL]=[{'attrs':[SOURCE_BATCH_LABEL]}]
 
 def export_meta_to_json(clinJson,filenm_meta,filenm_summary):
 
@@ -636,9 +636,12 @@ def parse_acrin_collection(clinJson,coll):
             if orig_nm in colnames[kk]:
               ind = colnames[kk].index(orig_nm)
               hndic={}
-              hndic['attrs']=[orig_nm]
-              hndic['colNo'] = ind
-              hndic['sheet'] = 0
+              if orig_nm == SOURCE_BATCH_COL:
+                hndic['attrs']=SOURCE_BATCH_LABEL
+              else:
+                hndic['attrs']=[orig_nm]
+                hndic['colNo'] = ind
+                hndic['sheet'] = 0
               if kk == 0:
                 hndic['filenm'] = cdir+'/'+form_id + '.csv'
               else:
