@@ -8,6 +8,7 @@ DEFAULT_SUFFIX="clinical"
 DEFAULT_DESCRIPTION="clinical data"
 CPTAC_SRC='isb-cgc-bq.CPTAC.clinical_gdc_current'
 IDC_COLLECTION_ID_SRC='`idc-dev-etl.idc_current.original_collections_metadata`'
+IDC_PATIENT_ID_SRC='`idc-dev-etl.idc_current.dicom_all`'
 
 def json_serial(obj):
     """JSON serializer for objects not serializable by default json code"""
@@ -17,7 +18,7 @@ def json_serial(obj):
     raise TypeError ("Type %s not serializable" % type(obj))
 
 
-def create_table_meta_cptac_row(cptac,dataset_id,version):
+def create_table_meta_cptac_row(collec,table_name,dataset_id,version):
   src_table_id = CPTAC_SRC
   client = bigquery.Client()
   src_table = client.get_table(src_table_id)
@@ -33,9 +34,9 @@ def create_table_meta_cptac_row(cptac,dataset_id,version):
   sumDic = {}
   suffix = DEFAULT_SUFFIX
   table_description = DEFAULT_DESCRIPTION
-  collection_id = str(cptac)
-  table_name = 'cptac_clinical'
-  sumDic['collection_id'] = collection_id
+  #collection_id = str(cptac)
+  #table_name = 'cptac_clinical'
+  sumDic['collection_id'] = collec
   sumDic['table_name'] = table_name
   sumDic['table_description'] = 'clinical_data'
   sumDic['source_info']=[]
@@ -65,8 +66,8 @@ def create_table_meta_cptac_row(cptac,dataset_id,version):
   return sumArr
 
 
-def create_column_meta_cptac_rows(cptac,dataset):
-  src_table_id = dataset + '.cptac_clinical'
+def create_column_meta_cptac_rows(collec, table_name,dataset_id):
+  src_table_id = dataset_id + '.' + table_name
   client = bigquery.Client()
   src_table = client.get_table(src_table_id)
   newArr=[]
@@ -78,14 +79,14 @@ def create_column_meta_cptac_rows(cptac,dataset):
     valSet[nm]=[]
     fieldSet[nm]=True
     type = field.field_type
-    curRec['collection_id']=str(cptac)
+    curRec['collection_id']=collec
     if nm == "submitter_id":
       curRec['case_col']=True
     else:
       curRec['case_col']=False
-    curRec['table_name']='cptac_clinical'
-    curRec['variable_name'] = nm
-    curRec['variable_label'] = nm
+    curRec['table_name']=table_name
+    curRec['column'] = nm
+    curRec['column_label'] = nm
     curRec['data_type']=type
     curRec['batch']=[0]
     newArr.append(curRec)
@@ -103,13 +104,15 @@ def create_column_meta_cptac_rows(cptac,dataset):
           valSet.pop(nm)
 
   for rec in newArr:
-    if rec['variable_name'] in valSet and len(valSet[rec['variable_name']])>0:
-      valSet[rec['variable_name']] = [str(x) for x in valSet[rec['variable_name']]]
-      valSet[rec['variable_name']].sort()
-      rec['values'] = [{"option_code":x} for x in valSet[rec['variable_name']]]
+    if rec['column'] in valSet and len(valSet[rec['column']])>0:
+      valSet[rec['column']] = [str(x) for x in valSet[rec['column']]]
+      valSet[rec['column']].sort()
+      rec['values'] = [{"option_code":x} for x in valSet[rec['column']]]
   return newArr
 
-def copy_cptac(dataset_id):
+def copy_cptac(dataset_id, table_name, lst):
+  if table_name is None:
+    table_name="cptac_clinical"
   src_table_id = CPTAC_SRC 
   client = bigquery.Client()
   src_table = client.get_table(src_table_id)
@@ -117,32 +120,65 @@ def copy_cptac(dataset_id):
           bigquery.SchemaField("source_batch","INTEGER")]
   nschema.extend(src_table.schema)
 
-  dest_table_id = dataset_id + '.cptac_clinical'
+  dest_table_id = dataset_id + '.'+table_name
   client.delete_table(dest_table_id, not_found_ok=True)
 
-  query = "select submitter_id as dicom_patient_id, 0 as source_batch, * from `" + src_table_id + "`"
+  if lst is None:
+    query = "select submitter_id as dicom_patient_id, 0 as source_batch, * from `" + src_table_id + "`"
+  else:
+    qslst=["\"" + x + "\"" for x in lst]
+    inp =",".join(qslst)
+    query = "select submitter_id as dicom_patient_id, 0 as source_batch, * from `" + src_table_id + "` where submitter_id in (" + inp + ")"
   job_config=bigquery.QueryJobConfig(destination=dest_table_id)
   query_job=client.query(query, job_config=job_config)
   print(query_job.result())
+  dest_table=client.get_table(dest_table_id)
+  nrows=dest_table.num_rows
+  if nrows==0:
+    client.delete_table(dest_table_id, not_found_ok=True)
+  return(nrows)
+  kk=1
+
 
 
 
 def get_cptac_ids():
   cptac=[]
   client = bigquery.Client()
-  query = "select tcia_api_collection_id, tcia_wiki_collection_id, idc_webapp_collection_id from "+IDC_COLLECTION_ID_SRC+" order by `tcia_wiki_collection_id`"
+  query = "select distinct t1.idc_webapp_collection_id, PatientID from "+IDC_COLLECTION_ID_SRC+" t1,"+IDC_PATIENT_ID_SRC+" t2 "\
+          "where Program = 'CPTAC' and t1.idc_webapp_collection_id = t2.idc_webapp_collection_id "\
+          "order by t1.idc_webapp_collection_id, PatientID"
+  print(query)
   job = client.query(query)
   cptac=[]
-
+  cptacDic={}
+  cptacCol=set()
   for row in job.result():
-    tcia_api=row['tcia_api_collection_id']
-    wiki_collec=row['tcia_wiki_collection_id']
     idc_webapp=row['idc_webapp_collection_id']
-    if idc_webapp.startswith('cptac_'):
-      cptac.append(idc_webapp)
-  cptac.sort()
-  return cptac
+    patientID=row['PatientID']
+    if not idc_webapp in cptacDic:
+      cptacDic[idc_webapp]=[]
+    cptacDic[idc_webapp].append(patientID)
+  for collec in cptacDic:
+    cptacDic[collec].sort()
+
+  return cptacDic
+
+def addAllCptac(proj_id, dataset_id, version):
+  nrows=[]
+  colrows=[]
+  cptac = get_cptac_ids()
+  dataset_id = proj_id + "." + dataset_id
+  for collec in cptac:
+    table_name = collec + "_clinical"
+    numr = copy_cptac(dataset_id, table_name, cptac[collec])
+    if numr > 0:
+      nrows.extend(create_table_meta_cptac_row(collec, table_name, dataset_id, version))
+      colrows.extend(create_column_meta_cptac_rows(collec, table_name, dataset_id))
+  return([nrows,colrows])
 
 if __name__=="__main__":
-  cptac=get_cptac_ids()
+  ret=addAllCptac("idc-dev","idc_v11_clinical","idc_v11")
+  rr=1
+
 

@@ -21,12 +21,17 @@ ORIGINAL_SRCS_PATH= '/Users/george/fed/actcianable/output/clinical_files/'
 NOTES_PATH = '/Users/george/fed/actcianable/output/'
 DEFAULT_SUFFIX='clinical'
 DEFAULT_DESCRIPTION='clinical data'
-DEFAULT_DATASET ='idc_v10_clinical'
+DEFAULT_DATASET ='idc_v11_clinical'
 DEFAULT_PROJECT ='idc-dev-etl'
-CURRENT_VERSION = 'idc_v10'
-LAST_VERSION = 'idc_v9'
-LAST_DATASET = 'idc_v9_clinical'
+CURRENT_VERSION = 'idc_v11'
+LAST_VERSION = 'idc_v10'
+LAST_DATASET = 'idc_v10_clinical'
 DESTINATION_FOLDER='./clin_'+CURRENT_VERSION+'/'
+SOURCE_BATCH_COL='source_batch'
+SOURCE_BATCH_LABEL='idc_provenance_source_batch'
+DICOM_COL= 'dicom_patient_id'
+DICOM_LABEL='idc_provenance_dicom_patient_id'
+
 
 def get_md5(filenm):
   with open(filenm, 'rb') as file_to_check:
@@ -343,8 +348,8 @@ def mergeAcrossBatch(clinJson,coll,ptRowIds,attrSetInd,colsAdded):
     df_all_rows=pd.concat([df_all_rows,new_df])
   clinJson[coll]['mergeBatch'][attrSetInd]['cList'] = cList
   clinJson[coll]['mergeBatch'][attrSetInd]['df'] = df_all_rows
-  clinJson[coll]['mergeBatch'][attrSetInd]['headers']['source_batch']=[]
-
+  #clinJson[coll]['mergeBatch'][attrSetInd]['headers']['source_batch']=[]
+  clinJson[coll]['mergeBatch'][attrSetInd]['headers']['source_batch']=[{'attrs':[SOURCE_BATCH_LABEL]}]
 
 def export_meta_to_json(clinJson,filenm_meta,filenm_summary):
 
@@ -408,12 +413,13 @@ def export_meta_to_json(clinJson,filenm_meta,filenm_summary):
               if (nkey not in sumDic) and not (nkey == 'source_info'):
                 sumDic[nkey] = hist[table_name][nkey]
             if (hist[table_name]['post_process_src'] != post_process_src) or (post_process_src_current_md5 != hist[table_name]['post_process_src_updated_md5']):
-              sumDic['idc_version_table_prior'] = sumDic['idc_version_table_updated']
-              sumDic['idc_version_table_prior_md5'] = sumDic['idc_version_table_updated_md5']
+              sumDic['idc_version_table_prior'] = hist[table_name]['idc_version_table_updated']
+              sumDic['post_process_src_prior_md5'] = hist[table_name]['post_process_src_updated_md5']
               sumDic['idc_version_table_updated'] = CURRENT_VERSION
-              sumDic['idc_version_table_updated_md5'] = post_process_src_current_md5
+              sumDic['table_updated_datetime'] = str(datetime.now(pytz.utc))
+
               for i in range(len(src_info)):
-                if (i < len(hist[table_name]['source_info'])) and (src_info[i]['srcs'][0] == hist[table_name]['source_info']['srcs'][0]):
+                if (i < len(hist[table_name]['source_info'])) and (src_info[i]['srcs'][0] == hist[table_name]['source_info'][i]['srcs'][0]):
                   src_info[i]['added_md5'] = hist[table_name]['source_info'][i]['added_md5']
                   if src_info[i]['update_md5'] == hist[table_name]['source_info'][i]['update_md5']:
                     src_info[i]['prior_md5'] = hist[table_name]['source_info'][i]['prior_md5']
@@ -458,16 +464,16 @@ def export_meta_to_json(clinJson,filenm_meta,filenm_summary):
               rrr=1
             dftype=str(dtypeL[i].name)
             try:
-              ndic['variable_label']=headerD['attrs'][len(headerD['attrs'])-1]
+              ndic['column_label']=headerD['attrs'][len(headerD['attrs'])-1]
             except:
               pass
             if (dftype=='Object') or (dftype=='object'):
               dftype = 'String'
 
-            ndic['variable_name']=str(header)
+            ndic['column']=str(header)
             ndic['data_type']=dftype
             if 'dictinfo' in headerD:
-              ndic['variable_label']=headerD['dictinfo']['variable_label']
+              ndic['column_label']=headerD['dictinfo']['column_label']
               ndic['data_type'] = headerD['dictinfo']['data_type']
               ndic['values']=headerD['dictinfo']['values']
               for val in ndic['values']:
@@ -492,30 +498,22 @@ def export_meta_to_json(clinJson,filenm_meta,filenm_summary):
             #sheetnms=[]
             for headerInfo in curDic['headers'][header]:
               ndic['original_column_headers'].append( str(headerInfo['attrs']))
-              ndic['column_numbers'].append(headerInfo['colNo'])
-              ndic['batch'].append(headerInfo['batch'])
-              try:
-                ndic['sheet_names'].append(headerInfo['sheetnm'])
-              except:
-                ndic['sheet_names'].append('')
-                pass
-              try:
+              if not (header == SOURCE_BATCH_COL) and not (header == DICOM_COL):
+                ndic['column_numbers'].append(headerInfo['colNo'])
+                ndic['batch'].append(headerInfo['batch'])
+                if 'sheetnm' in headerInfo:
+                  ndic['sheet_names'].append(headerInfo['sheetnm'])
                 ndic['files'].append( headerInfo['filenm'])
-              except:
-                pass
-
             metaArr.append(ndic)
   f=open(filenm_summary,'w')
   json.dump(sumArr,f)
   f.close()
-
   f = open(filenm_meta, 'w')
   json.dump(metaArr, f)
   f.close()
 
 
 def reform_case(case_id, colec,type):
-
   if type == "same":
     ret = case_id
   elif type == "acrin format":
@@ -532,26 +530,18 @@ def reform_case(case_id, colec,type):
     ret=colec+'_'+case_id
   return ret
 
-
 def add_tcia_case_id(mergeB, tcia_coll,type):
   colId=mergeB['ptId'][0][1]
   df=mergeB['df']
   ncaseA=df[colId].apply(lambda x: reform_case(str(x),tcia_coll,type))
-  '''for row in df.iterrows():
-    case_id=row[colId]
-    ncaseid=reform_case(case_id,tcia_coll,type)
-    ncaseA.append(ncaseid)'''
   df.insert(0,'dicom_patient_id',ncaseA)
-  mergeB['headers']['dicom_patient_id']=[]
-
-
+  mergeB['headers']['dicom_patient_id']=[{'attrs':[DICOM_LABEL]}]
 
 
 def parse_acrin_collection(clinJson,coll):
   webapp_coll=clinJson[coll]['idc_webapp']
   clinJson[coll]['mergeBatch']=[]
   clinJson[coll]['tabletypes']=[]
-  #clinJson[coll]['dataset'] = webapp_coll+'_clinical'
   colldir=coll.replace('/','_')
   colldir=colldir.replace(':','_')
   curDir= ORIGINAL_SRCS_PATH  + colldir
@@ -594,7 +584,13 @@ def parse_acrin_collection(clinJson,coll):
       reformCdict={}
       for celem in cdict:
         celem['variable_name']=celem['variable_name'].lower()
-        reformCdict[celem['variable_name']]=celem
+        celem['column'] = celem['variable_name']
+        del celem['variable_name']
+        celem['column_label'] = celem['variable_label']
+        del celem['variable_label']
+        reformCdict[celem['column']]=celem
+
+
 
       srcf=npath+'/'+form_id+'.csv'
       if path.exists(srcf):
@@ -683,7 +679,11 @@ def parse_conventional_collection(clinJson,coll):
           srcInfo = clinJson[coll]['srcs'][attrSetInd][batchSetInd]
         except:
           lll=1
-        patientIdRow = (0 if not ('patientIdRow') in srcInfo else srcInfo['patientIdRow'])
+        try:
+          patientIdRow = (0 if not ('patientIdRow') in srcInfo else srcInfo['patientIdRow'])
+        except:
+          lll=1
+          pass
         ptRowIds.append(patientIdRow)
         print("strcInfo " + str(srcInfo))
         if not ('type' in srcInfo) or not (srcInfo['type'] == 'json'):
@@ -750,10 +750,10 @@ if __name__=="__main__":
       if (clinJson[coll]['spec'] == 'ignore') or (clinJson[coll]['spec'] == 'error'):
         pass
       elif clinJson[coll]['spec'] == 'acrin':
-        pass
         parse_acrin_collection(clinJson,coll)
     else:
       parse_conventional_collection(clinJson, coll)
+      pass
 
   clin_meta=  CURRENT_VERSION +'_column_metadata.json'
   clin_summary = CURRENT_VERSION +'_table_metadata.json'
