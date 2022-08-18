@@ -11,7 +11,7 @@ DEFAULT_DESCRIPTION='clinical data'
 DEFAULT_PROJECT ='idc-dev-etl'
 CURRENT_VERSION = 'idc_v11'
 
-DEFAULT_PROJECT ='idc-dev'
+#DEFAULT_PROJECT ='idc-dev'
 #CURRENT_VERSION = 'gw_temp'
 
 
@@ -150,9 +150,9 @@ def checkData():
     colNames=[col.name for col in table.schema]
     colNames.sort()
 
-    query = "select table_name,variable_name from " + dataset_id + ".column_metadata where table_name= '"+tableNm+"'"
+    query = "select table_name,column from " + dataset_id + ".column_metadata where table_name= '"+tableNm+"'"
     job = client.query(query)
-    colL = [row.variable_name for row in job.result()]
+    colL = [row.column for row in job.result()]
     colL.sort()
     if not (colNames == colL):
       print ("mismatch in columns for table "+tableNm+"!")

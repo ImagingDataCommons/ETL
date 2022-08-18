@@ -10,6 +10,14 @@ CPTAC_SRC='isb-cgc-bq.CPTAC.clinical_gdc_current'
 IDC_COLLECTION_ID_SRC='`idc-dev-etl.idc_current.original_collections_metadata`'
 IDC_PATIENT_ID_SRC='`idc-dev-etl.idc_current.dicom_all`'
 
+
+SOURCE_BATCH_COL='source_batch'
+SOURCE_BATCH_LABEL='idc_provenance_source_batch'
+DICOM_COL= 'dicom_patient_id'
+DICOM_LABEL='idc_provenance_dicom_patient_id'
+
+
+
 def json_serial(obj):
     """JSON serializer for objects not serializable by default json code"""
 
@@ -85,8 +93,15 @@ def create_column_meta_cptac_rows(collec, table_name,dataset_id):
     else:
       curRec['case_col']=False
     curRec['table_name']=table_name
+
     curRec['column'] = nm
-    curRec['column_label'] = nm
+    
+    if nm == SOURCE_BATCH_COL:
+      curRec['column_label']=SOURCE_BATCH_LABEL
+    elif nm == DICOM_COL:
+      curRec['column_label']=DICOM_LABEL
+    else:
+      curRec['column_label'] = nm
     curRec['data_type']=type
     curRec['batch']=[0]
     newArr.append(curRec)
