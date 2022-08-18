@@ -167,7 +167,10 @@ def processSrc(fpath, colName, srcInfo):
     for j in range(len(values)):
       val=values[j]
       if (i == len(rows)-1) or (not (str(val) == 'nan') and not ('Unnamed:' in str(colVal))):
-        colVal=val
+        if 'headerformatspec' in srcInfo:
+          colVal=specialHeaderFormat(val,srcInfo['headerformatspec'])
+        else:
+          colVal=val
       if (i < (len(rows)-1)) or (not (str(colVal) == 'nan') and not ('Unnamed:' in str(colVal))):
         attrs[j].append(colVal)
 
@@ -215,6 +218,15 @@ def processSrc(fpath, colName, srcInfo):
   except:
     df[df.columns[patientIdRow]] = df[df.columns[patientIdRow]].astype('str')
   return [headerSet,df,sheetnm]
+
+def specialHeaderFormat(val,format):
+  nval=''
+  if format=="lidc":
+    nval= " ".join([x for x in val.split('\n') if not ("=" in x)])
+  else:
+    nval=val
+  return nval
+
 
 def formatForBQ(attrs, lc=False):
   patt=re.compile(r"[a-zA-Z_0-9]")
@@ -474,11 +486,13 @@ def export_meta_to_json(clinJson,filenm_meta,filenm_summary):
             ndic['data_type']=dftype
             if 'dictinfo' in headerD:
               ndic['column_label']=headerD['dictinfo']['column_label']
-              ndic['data_type'] = headerD['dictinfo']['data_type']
-              ndic['values']=headerD['dictinfo']['values']
-              for val in ndic['values']:
-                if val['option_code'].lower() == 'nan':
-                  val['option_code'] = '\"'+val['option_code']+'\"'
+              if 'data_type' in headerD['dictinfo']:
+                ndic['data_type'] = headerD['dictinfo']['data_type']
+              if 'values' in headerD['dictinfo']:
+                ndic['values']=headerD['dictinfo']['values']
+                for val in ndic['values']:
+                  if val['option_code'].lower() == 'nan':
+                    val['option_code'] = '\"'+val['option_code']+'\"'
             elif 'uniques' in headerD:
               num_values=len(headerD['uniques'])
               if (num_values<21):
@@ -723,6 +737,67 @@ def parse_conventional_collection(clinJson,coll):
       # analyzeDataFrame(clinJson[coll])
       # write_dataframe_to_json('./clin/',coll,clinJson)'''
 
+def parse_dict(fpath,clinJson, coll):
+  data_dict={}
+  colldir = coll.replace('/', '_').replace(':', '_')
+  filenm=fpath + colldir + '/' +clinJson[coll]["dict"]["filenm"]
+  sheetNo=clinJson[coll]["dict"]["sheet"]
+
+  extension = path.splitext(filenm)[1]
+  engine = 'xlrd'
+  if extension == '.xlsx':
+    engine = 'openpyxl'
+  elif extension == '.xlsb':
+    engine = 'pyxlsb'
+  df = []
+  if extension == '.csv':
+    df = pd.read_csv(filenm)
+    sheetnm = ''
+  else:
+    if "skiprows" in clinJson[coll]["dict"]:
+      dfi = pd.read_excel(filenm, engine=engine, sheet_name=None,skiprows=clinJson[coll]["dict"]["skiprows"])
+    else:
+      dfi = pd.read_excel(filenm, engine=engine, sheet_name=None)
+    sheetnm = list(dfi.keys())[sheetNo]
+    df = dfi[sheetnm]
+    rr=1
+  if (clinJson[coll]["dict"]["form"]=="ispy2"):
+    for index,row in df.iterrows():
+      column = ' '.join(row['FIELD'].split())
+      column = formatForBQ([[column]],True)[0]
+      descriptionA = row['DESCRIPTION'].split('\n')
+      label = ' '.join(descriptionA[0].split())
+      data_dict[column] = {}
+      data_dict[column]['label']=label
+      if (len(descriptionA)>1):
+        data_dict[column]['opts']=[]
+      for k in range(1,len(descriptionA)):
+        optA = ' '.join(descriptionA[k].split()).split(':')
+        if len(optA)>1:
+          data_dict[column]['opts'].append({"option_code":optA[0], "option_value":optA[1]})
+        else:
+          data_dict[column]['opts'].append({"option_code": optA[0]})
+  elif (clinJson[coll]["dict"]["form"]=="lidc"):
+    for col in list(df.columns):
+      column_label = specialHeaderFormat(col,"lidc")
+      column = formatForBQ([[column_label]],True)[0]
+      data_dict[column] = {}
+      data_dict[column]['label'] = column_label
+      opts= [x for x in col.split('\n') if '=' in x]
+      if len(opts)>0:
+        data_dict[column]['opts'] = []
+        for op in opts:
+          optA=op.split('=')
+          data_dict[column]['opts'].append({"option_code": optA[0], "option_value": optA[1]})
+  for btch in clinJson[coll]['mergeBatch']:
+    for nkey in btch['headers']:
+      if nkey in data_dict:
+        btch['headers'][nkey][0]['dictinfo'] = {}
+        btch['headers'][nkey][0]['dictinfo']['column'] = nkey
+        btch['headers'][nkey][0]['dictinfo']['column_label'] = data_dict[nkey]['label']
+        if 'opts' in data_dict[nkey]:
+          btch['headers'][nkey][0]['dictinfo']['values'] = data_dict[nkey]['opts']
+
 if __name__=="__main__":
   dirpath = Path(DESTINATION_FOLDER)
   if dirpath.exists() and dirpath.is_dir():
@@ -730,8 +805,9 @@ if __name__=="__main__":
   mkdir(dirpath)
 
   #ORIGINAL_SRCS_PATH=sys.argv[1]
-  clinJson =read_clin_file(NOTES_PATH+'clinical_notes.json')
-  #clinJson = read_clin_file(NOTES_PATH + 'temp.json')
+
+  clinJson = read_clin_file(NOTES_PATH + 'clinical_notes.json')
+  #clinJson = read_clin_file(NOTES_PATH + 'sum.json')
   collec=list(clinJson.keys())
   collec.sort()
   client = bigquery.Client()
@@ -756,6 +832,9 @@ if __name__=="__main__":
         parse_acrin_collection(clinJson,coll)
     else:
       parse_conventional_collection(clinJson, coll)
+      if "dict" in clinJson[coll]:
+        if ("use" in clinJson[coll]["dict"]) and clinJson[coll]["dict"]["use"]:
+          parse_dict(ORIGINAL_SRCS_PATH,clinJson, coll)
       pass
 
   clin_meta=  CURRENT_VERSION +'_column_metadata.json'
