@@ -24,8 +24,8 @@ DEFAULT_DESCRIPTION='clinical data'
 DEFAULT_DATASET ='idc_v11_clinical'
 DEFAULT_PROJECT ='idc-dev-etl'
 CURRENT_VERSION = 'idc_v11'
-LAST_VERSION = 'idc_v10'
-LAST_DATASET = 'idc_v10_clinical'
+LAST_VERSION = 'idc_v11'
+LAST_DATASET = 'idc_v11_clinical'
 DESTINATION_FOLDER='./clin_'+CURRENT_VERSION+'/'
 SOURCE_BATCH_COL='source_batch'
 SOURCE_BATCH_LABEL='idc_provenance_source_batch'
@@ -774,7 +774,7 @@ def parse_dict(fpath,clinJson, coll):
       for k in range(1,len(descriptionA)):
         optA = ' '.join(descriptionA[k].split()).split(':')
         if len(optA)>1:
-          data_dict[column]['opts'].append({"option_code":optA[0], "option_value":optA[1]})
+          data_dict[column]['opts'].append({"option_code":optA[0], "option_description":optA[1]})
         else:
           data_dict[column]['opts'].append({"option_code": optA[0]})
   elif (clinJson[coll]["dict"]["form"]=="lidc"):
@@ -788,7 +788,7 @@ def parse_dict(fpath,clinJson, coll):
         data_dict[column]['opts'] = []
         for op in opts:
           optA=op.split('=')
-          data_dict[column]['opts'].append({"option_code": optA[0], "option_value": optA[1]})
+          data_dict[column]['opts'].append({"option_code": optA[0], "option_description": optA[1]})
   for btch in clinJson[coll]['mergeBatch']:
     for nkey in btch['headers']:
       if nkey in data_dict:

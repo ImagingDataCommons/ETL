@@ -6,7 +6,12 @@ import pytz
 
 DEFAULT_SUFFIX="clinical"
 DEFAULT_DESCRIPTION="clinical data"
+
 CPTAC_SRC='isb-cgc-bq.CPTAC.clinical_gdc_current'
+NLST='idc-dev-etl.idc_v10_pub'
+NLST_SRCA=['nlst_canc','nlst_ctab','nlst_ctabc','nlst_prsn','nlst_screen']
+TCGA_SRC='idc-dev-etl.idc_v10_pub.tcga_clinical_rel9'
+
 IDC_COLLECTION_ID_SRC='`idc-dev-etl.idc_current.original_collections_metadata`'
 IDC_PATIENT_ID_SRC='`idc-dev-etl.idc_current.dicom_all`'
 
@@ -26,7 +31,7 @@ def json_serial(obj):
     raise TypeError ("Type %s not serializable" % type(obj))
 
 
-def create_table_meta_cptac_row(collec,table_name,dataset_id,version):
+def create_table_meta_row(collec,table_name,dataset_id,version):
   src_table_id = CPTAC_SRC
   client = bigquery.Client()
   src_table = client.get_table(src_table_id)
@@ -74,7 +79,7 @@ def create_table_meta_cptac_row(collec,table_name,dataset_id,version):
   return sumArr
 
 
-def create_column_meta_cptac_rows(collec, table_name,dataset_id):
+def create_column_meta_rows(collec, table_name,dataset_id):
   src_table_id = dataset_id + '.' + table_name
   client = bigquery.Client()
   src_table = client.get_table(src_table_id)
@@ -125,10 +130,10 @@ def create_column_meta_cptac_rows(collec, table_name,dataset_id):
       rec['values'] = [{"option_code":x} for x in valSet[rec['column']]]
   return newArr
 
-def copy_cptac(dataset_id, table_name, lst):
+def copy_table(dataset_id, table_name, lst, src_table_id, id_col, intIds):
   if table_name is None:
     table_name="cptac_clinical"
-  src_table_id = CPTAC_SRC 
+  #src_table_id = CPTAC_SRC
   client = bigquery.Client()
   src_table = client.get_table(src_table_id)
   nschema=[bigquery.SchemaField("dicom_patient_id","STRING"),
@@ -139,11 +144,15 @@ def copy_cptac(dataset_id, table_name, lst):
   client.delete_table(dest_table_id, not_found_ok=True)
 
   if lst is None:
-    query = "select submitter_id as dicom_patient_id, 0 as source_batch, * from `" + src_table_id + "`"
+    query = "select " + id_col + " as dicom_patient_id, 0 as source_batch, * from `" + src_table_id + "`"
   else:
-    qslst=["\"" + x + "\"" for x in lst]
-    inp =",".join(qslst)
-    query = "select submitter_id as dicom_patient_id, 0 as source_batch, * from `" + src_table_id + "` where submitter_id in (" + inp + ")"
+    if intIds:
+      qslst = [ str(x)  for x in lst]
+      inp=",".join(qslst)
+    else:
+      qslst=["\"" + str(x) + "\"" for x in lst]
+      inp =",".join(qslst)
+    query = "select " + id_col + " as dicom_patient_id, 0 as source_batch, * from `" + src_table_id + "` where " + id_col + " in (" + inp + ")"
   job_config=bigquery.QueryJobConfig(destination=dest_table_id)
   query_job=client.query(query, job_config=job_config)
   print(query_job.result())
@@ -157,11 +166,15 @@ def copy_cptac(dataset_id, table_name, lst):
 
 
 
-def get_cptac_ids():
+def get_ids(program,collection):
   cptac=[]
   client = bigquery.Client()
-  query = "select distinct t1.idc_webapp_collection_id, PatientID from "+IDC_COLLECTION_ID_SRC+" t1,"+IDC_PATIENT_ID_SRC+" t2 "\
-          "where Program = 'CPTAC' and t1.idc_webapp_collection_id = t2.idc_webapp_collection_id "\
+  query = "select distinct t1.idc_webapp_collection_id, PatientID from "+IDC_COLLECTION_ID_SRC+" t1,"+IDC_PATIENT_ID_SRC+" t2 where "
+  if (program is not None):
+    query = query + "Program = '"+ program +"' and "
+  if (collection is not None):
+    query = query + "t1.idc_webapp_collection_id = '" + collection + "' and "
+  query = query + "t1.idc_webapp_collection_id = t2.idc_webapp_collection_id "\
           "order by t1.idc_webapp_collection_id, PatientID"
   print(query)
   job = client.query(query)
@@ -170,7 +183,8 @@ def get_cptac_ids():
   cptacCol=set()
   for row in job.result():
     idc_webapp=row['idc_webapp_collection_id']
-    patientID=row['PatientID']
+    patientID = int(row['PatientID'])
+
     if not idc_webapp in cptacDic:
       cptacDic[idc_webapp]=[]
     cptacDic[idc_webapp].append(patientID)
@@ -179,21 +193,27 @@ def get_cptac_ids():
 
   return cptacDic
 
-def addAllCptac(proj_id, dataset_id, version):
+def addTables(proj_id, dataset_id, version,program,collection,subscript,table_src, id_col,intIds):
   nrows=[]
   colrows=[]
-  cptac = get_cptac_ids()
+  cptac = get_ids(program, collection)
   dataset_id = proj_id + "." + dataset_id
   for collec in cptac:
-    table_name = collec + "_clinical"
-    numr = copy_cptac(dataset_id, table_name, cptac[collec])
+    table_name = collec + "_" + subscript
+    numr = copy_table(dataset_id, table_name, cptac[collec],table_src, id_col, intIds)
     if numr > 0:
-      nrows.extend(create_table_meta_cptac_row(collec, table_name, dataset_id, version))
-      colrows.extend(create_column_meta_cptac_rows(collec, table_name, dataset_id))
+      nrows.extend(create_table_meta_row(collec, table_name, dataset_id, version))
+      colrows.extend(create_column_meta_rows(collec, table_name, dataset_id))
   return([nrows,colrows])
 
 if __name__=="__main__":
-  ret=addAllCptac("idc-dev","idc_v11_clinical","idc_v11")
+  ret=addTables("idc-dev","idc_v11_clinical","idc_v11","CPTAC",None,"clinical",CPTAC_SRC,"submitter_id", False)
+  ret=addTables("idc-dev","idc_v11_clinical","idc_v11","TCGA",None,"clinical",TCGA_SRC,"case_barcode", False)
+  for colec in NLST_SRCA:
+    sufx=colec.split('_')[1].lower()
+    src=NLST+'.'+colec
+    nret = addTables("idc-dev", "idc_v11_clinical", "idc_v11", "NCI Trials", "nlst", sufx, src, "pid",True)
+    rr=1
   rr=1
 
 
