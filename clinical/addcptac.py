@@ -183,7 +183,7 @@ def get_ids(program,collection):
   cptacCol=set()
   for row in job.result():
     idc_webapp=row['idc_webapp_collection_id']
-    patientID = int(row['PatientID'])
+    patientID = row['PatientID']
 
     if not idc_webapp in cptacDic:
       cptacDic[idc_webapp]=[]

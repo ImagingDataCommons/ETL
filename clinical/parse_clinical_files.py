@@ -100,8 +100,7 @@ def recastDataFrameTypes(df, ptId):
 
 def analyzeDataFrame(cdic):
   df = cdic['df']
-  #last df column is idc_batch, added by us
-  for i in range(len(df.columns)-1):
+  for i in range(len(df.columns)):
     try:
       uVals = list(df[df.columns[i]].dropna().unique())
     except:

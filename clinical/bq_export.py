@@ -3,17 +3,13 @@ import json
 from os import listdir
 from os.path import isfile,join,splitext
 import sys
-from addcptac import addAllCptac
+from addcptac import addTables, CPTAC_SRC
 
 DEFAULT_SUFFIX='clinical'
 DEFAULT_DESCRIPTION='clinical data'
 
 DEFAULT_PROJECT ='idc-dev-etl'
 CURRENT_VERSION = 'idc_v11'
-
-#DEFAULT_PROJECT ='idc-dev'
-#CURRENT_VERSION = 'gw_temp'
-
 
 DATASET=CURRENT_VERSION+'_clinical'
 
@@ -219,7 +215,8 @@ def load_all(project,dataset,version):
   client.delete_dataset(dataset_id, delete_contents=True, not_found_ok=True)
   ds = client.create_dataset(dataset_id)
 
-  cptac=addAllCptac(project, dataset, version)
+  #cptac=addAllCptac(project, dataset, version)
+  cptac=addTables("idc-dev", "idc_v11_clinical", "idc_v11", "CPTAC", None, "clinical", CPTAC_SRC, "submitter_id", False)
   create_meta_summary(project, dataset,cptac[0])
 
   create_meta_table(project, dataset)
