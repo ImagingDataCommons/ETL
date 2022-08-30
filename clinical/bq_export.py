@@ -3,12 +3,13 @@ import json
 from os import listdir
 from os.path import isfile,join,splitext
 import sys
-from addcptac import addTables, CPTAC_SRC
+from addcptac import addTables, CPTAC_SRC,TCGA_SRC
 
 DEFAULT_SUFFIX='clinical'
 DEFAULT_DESCRIPTION='clinical data'
 
 DEFAULT_PROJECT ='idc-dev-etl'
+#DEFAULT_PROJECT ='idc-dev'
 CURRENT_VERSION = 'idc_v11'
 
 DATASET=CURRENT_VERSION+'_clinical'
@@ -55,6 +56,7 @@ def create_meta_summary(project, dataset,cptacColRows):
   metaD=json.load(f)
   f.close()
   #cptacRow = create_table_meta_cptac_row(cptac, dataset_id, CURRENT_VERSION)
+  #cptacRow = addTables
   metaD.extend(cptacColRows)
   #del metaD[1]['source_info']
   job=client.load_table_from_json(metaD, table, job_config=job_config)
@@ -215,13 +217,19 @@ def load_all(project,dataset,version):
   client.delete_dataset(dataset_id, delete_contents=True, not_found_ok=True)
   ds = client.create_dataset(dataset_id)
 
-  #cptac=addAllCptac(project, dataset, version)
+
   cptac=addTables("idc-dev", "idc_v11_clinical", "idc_v11", "CPTAC", None, "clinical", CPTAC_SRC, "submitter_id", False)
-  create_meta_summary(project, dataset,cptac[0])
+  tcga=addTables("idc-dev", "idc_v11_clinical", "idc_v11", "TCGA", None, "clinical", TCGA_SRC, "case_barcode", False)
+
+  bqSrcMetaTbl = cptac[0]+tcga[0]
+  bqSrcMetaCol = cptac[1]+tcga[1]
+
+
+  create_meta_summary(project, dataset,bqSrcMetaTbl)
 
   create_meta_table(project, dataset)
   filenm="./"+CURRENT_VERSION+"_column_metadata.json"
-  load_meta(project,dataset,filenm,cptac[1])
+  load_meta(project,dataset,filenm,bqSrcMetaCol)
   dirnm="./clin_"+CURRENT_VERSION
   load_clin_files(project,dataset,dirnm)
 

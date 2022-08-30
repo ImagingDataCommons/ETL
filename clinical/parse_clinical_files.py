@@ -102,7 +102,8 @@ def analyzeDataFrame(cdic):
   df = cdic['df']
   for i in range(len(df.columns)):
     try:
-      uVals = list(df[df.columns[i]].dropna().unique())
+      uVals = list(df[df.columns[i]].unique())
+      uVals = ["null" if pd.isna(x) else x for x in uVals]
     except:
       pass
     try:
@@ -487,11 +488,12 @@ def export_meta_to_json(clinJson,filenm_meta,filenm_summary):
               ndic['column_label']=headerD['dictinfo']['column_label']
               if 'data_type' in headerD['dictinfo']:
                 ndic['data_type'] = headerD['dictinfo']['data_type']
-              if 'values' in headerD['dictinfo']:
-                ndic['values']=headerD['dictinfo']['values']
-                for val in ndic['values']:
-                  if val['option_code'].lower() == 'nan':
-                    val['option_code'] = '\"'+val['option_code']+'\"'
+
+            if ('dictinfo' in headerD) and ('values' in headerD['dictinfo']):
+              ndic['values'] = headerD['dictinfo']['values']
+              for val in ndic['values']:
+                if val['option_code'].lower() == 'nan':
+                  val['option_code'] = '\"' + val['option_code'] + '\"'
             elif 'uniques' in headerD:
               num_values=len(headerD['uniques'])
               if (num_values<21):
@@ -537,6 +539,8 @@ def reform_case(case_id, colec,type):
     ret="HN_P"+case_id.rjust(3,'0')
   elif type=="ispy":
     ret="ISPY1_"+case_id
+  elif type=="ispy2":
+    ret="ISPY2_"+case_id
   elif type=="lung_pt":
     ret = "Lung_Dx-"+case_id
   elif type=='add colec':
@@ -741,6 +745,15 @@ def parse_dict(fpath,clinJson, coll):
   colldir = coll.replace('/', '_').replace(':', '_')
   filenm=fpath + colldir + '/' +clinJson[coll]["dict"]["filenm"]
   sheetNo=clinJson[coll]["dict"]["sheet"]
+  skipRows=None
+  if "skipRows" in clinJson[coll]["dict"]:
+    skipRows= clinJson[coll]["dict"]['skipRows']
+  header = 0
+  if "header" in clinJson[coll]["dict"]:
+    if clinJson[coll]["dict"]["header"]=="None":
+      header = None
+    else:
+      header = clinJson[coll]["dict"]["header"]
 
   extension = path.splitext(filenm)[1]
   engine = 'xlrd'
@@ -753,10 +766,7 @@ def parse_dict(fpath,clinJson, coll):
     df = pd.read_csv(filenm)
     sheetnm = ''
   else:
-    if "skiprows" in clinJson[coll]["dict"]:
-      dfi = pd.read_excel(filenm, engine=engine, sheet_name=None,skiprows=clinJson[coll]["dict"]["skiprows"])
-    else:
-      dfi = pd.read_excel(filenm, engine=engine, sheet_name=None)
+    dfi = pd.read_excel(filenm, engine=engine, sheet_name=None, skiprows=skipRows, header=header)
     sheetnm = list(dfi.keys())[sheetNo]
     df = dfi[sheetnm]
     rr=1
@@ -788,6 +798,18 @@ def parse_dict(fpath,clinJson, coll):
         for op in opts:
           optA=op.split('=')
           data_dict[column]['opts'].append({"option_code": optA[0], "option_description": optA[1]})
+  elif (clinJson[coll]["dict"]["form"]=="hcc_tace"):
+    spec={"Y = 1 N = 0", "1=Male, 2=Female"}
+    for index, row in df.iterrows():
+      column = formatForBQ([[row[0]]], True)[0]
+      column_label = row[1]
+      if column_label in spec:
+        column_label = row[0]+": "+row[1]
+      data_dict[column] = {}
+      data_dict[column]['label'] = column_label
+
+
+
   for btch in clinJson[coll]['mergeBatch']:
     for nkey in btch['headers']:
       if nkey in data_dict:
@@ -834,6 +856,7 @@ if __name__=="__main__":
       if "dict" in clinJson[coll]:
         if ("use" in clinJson[coll]["dict"]) and clinJson[coll]["dict"]["use"]:
           parse_dict(ORIGINAL_SRCS_PATH,clinJson, coll)
+          ff=1
       pass
 
   clin_meta=  CURRENT_VERSION +'_column_metadata.json'
