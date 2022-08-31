@@ -540,7 +540,7 @@ def reform_case(case_id, colec,type):
   elif type=="ispy":
     ret="ISPY1_"+case_id
   elif type=="ispy2":
-    ret="ISPY2_"+case_id
+    ret="ISPY2-"+case_id
   elif type=="lung_pt":
     ret = "Lung_Dx-"+case_id
   elif type=='add colec':
