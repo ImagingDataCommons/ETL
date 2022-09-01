@@ -218,8 +218,8 @@ def load_all(project,dataset,version):
   ds = client.create_dataset(dataset_id)
 
 
-  cptac=addTables("idc-dev", "idc_v11_clinical", "idc_v11", "CPTAC", None, "clinical", CPTAC_SRC, "submitter_id", False)
-  tcga=addTables("idc-dev", "idc_v11_clinical", "idc_v11", "TCGA", None, "clinical", TCGA_SRC, "case_barcode", False)
+  cptac=addTables(DEFAULT_PROJECT, DATASET, CURRENT_VERSION, "CPTAC", None, "clinical", CPTAC_SRC, "submitter_id", False)
+  tcga=addTables(DEFAULT_PROJECT, DATASET, CURRENT_VERSION, "TCGA", None, "clinical", TCGA_SRC, "case_barcode", False)
 
   bqSrcMetaTbl = cptac[0]+tcga[0]
   bqSrcMetaCol = cptac[1]+tcga[1]
