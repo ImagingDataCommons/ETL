@@ -31,6 +31,7 @@ SOURCE_BATCH_COL='source_batch'
 SOURCE_BATCH_LABEL='idc_provenance_source_batch'
 DICOM_COL= 'dicom_patient_id'
 DICOM_LABEL='idc_provenance_dicom_patient_id'
+DATASET_PATH='bigquery-public-data.'+DEFAULT_DATASET
 
 
 def get_md5(filenm):
@@ -400,6 +401,7 @@ def export_meta_to_json(clinJson,filenm_meta,filenm_summary):
             table_description=DEFAULT_DESCRIPTION
           collection_id=clinJson[coll]['idc_webapp']
           table_name = collection_id + '_' + suffix
+          full_table_name=DATASET_PATH+'.'+table_name
           try:
             post_process_src = './'+DESTINATION_FOLDER+'/'+clinJson[coll]['mergeBatch'][k]['outfile']
             post_process_src_current_md5 = get_md5(post_process_src)
@@ -416,7 +418,7 @@ def export_meta_to_json(clinJson,filenm_meta,filenm_summary):
             src_info.append(nsrc)
 
           sumDic['collection_id'] = collection_id
-          sumDic['table_name'] = table_name
+          sumDic['table_name'] = full_table_name
           sumDic['table_description'] = table_description
           sumDic['post_process_src'] = post_process_src
 
@@ -465,7 +467,7 @@ def export_meta_to_json(clinJson,filenm_meta,filenm_summary):
             else:
               ndic['case_col'] = 'no'
             ndic['collection_id'] = collection_id
-            ndic['table_name'] = table_name
+            ndic['table_name'] = full_table_name
             header = curDf.columns[i]
             try:
               if (len(curDic['headers'][header])>0):
