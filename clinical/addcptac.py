@@ -7,10 +7,11 @@ import pytz
 DEFAULT_SUFFIX="clinical"
 DEFAULT_DESCRIPTION="clinical data"
 
-CPTAC_SRC='isb-cgc-bq.CPTAC.clinical_gdc_current'
+CPTAC_SRC='isb-cgc-bq.CPTAC_versioned.clinical_gdc_r31'
 NLST='idc-dev-etl.idc_v11_pub'
 NLST_SRCA=['nlst_canc','nlst_ctab','nlst_ctabc','nlst_prsn','nlst_screen']
-TCGA_SRC='idc-dev-etl.idc_v11_pub.tcga_clinical_rel9'
+IDC_VERSION='idc_v11'
+TCGA_SRC='idc-dev-etl.'+IDC_VERSION+'_pub.tcga_clinical_rel9'
 
 IDC_COLLECTION_ID_SRC='`idc-dev-etl.idc_v11_pub.original_collections_metadata`'
 IDC_PATIENT_ID_SRC='`idc-dev-etl.idc_v11_pub.dicom_all`'
@@ -20,6 +21,8 @@ SOURCE_BATCH_COL='source_batch'
 SOURCE_BATCH_LABEL='idc_provenance_source_batch'
 DICOM_COL= 'dicom_patient_id'
 DICOM_LABEL='idc_provenance_dicom_patient_id'
+FINAL_PROJ='bigquery-public-data.'
+TCGA_REC_SRC='bigquery-public-data.'+IDC_VERSION+'.tcga_clinical_rel9'
 
 
 
@@ -31,7 +34,8 @@ def json_serial(obj):
     raise TypeError ("Type %s not serializable" % type(obj))
 
 
-def create_table_meta_row(collec,table_name,dataset_id,version,src_table_id):
+def create_table_meta_row(collec,table_name,dataset_id,version,src_table_id, table_src_rec):
+  full_table_name = FINAL_PROJ + IDC_VERSION + '_clinical.' + table_name
   client = bigquery.Client()
   src_table = client.get_table(src_table_id)
   table_last_modified = str(src_table.modified)
@@ -49,13 +53,13 @@ def create_table_meta_row(collec,table_name,dataset_id,version,src_table_id):
   #collection_id = str(cptac)
   #table_name = 'cptac_clinical'
   sumDic['collection_id'] = collec
-  sumDic['table_name'] = table_name
+  sumDic['table_name'] = full_table_name
   sumDic['table_description'] = 'clinical_data'
   sumDic['source_info']=[]
   sumDic['source_info'].append({})
   sumDic['source_info'][0]['table_last_modified']=table_last_modified
   sumDic['source_info'][0]['table_size'] = table_size
-  sumDic['source_info'][0]['srcs']=[src_table_id]
+  sumDic['source_info'][0]['srcs']=[table_src_rec]
 
   if table_name in hist:
     for nkey in hist[table_name]:
@@ -79,6 +83,7 @@ def create_table_meta_row(collec,table_name,dataset_id,version,src_table_id):
 
 
 def create_column_meta_rows(collec, table_name,dataset_id):
+  full_table_name=FINAL_PROJ+IDC_VERSION+'_clinical.'+table_name
   src_table_id = dataset_id + '.' + table_name
   client = bigquery.Client()
   src_table = client.get_table(src_table_id)
@@ -96,7 +101,7 @@ def create_column_meta_rows(collec, table_name,dataset_id):
       curRec['case_col']=True
     else:
       curRec['case_col']=False
-    curRec['table_name']=table_name
+    curRec['table_name']=full_table_name
 
     curRec['column'] = nm
     
@@ -201,18 +206,21 @@ def addTables(proj_id, dataset_id, version,program,collection,subscript,table_sr
     table_name = collec + "_" + subscript
     numr = copy_table(dataset_id, table_name, cptac[collec],table_src, id_col, intIds)
     if numr > 0:
-      nrows.extend(create_table_meta_row(collec, table_name, dataset_id, version,table_src))
+      if program=="TCGA":
+        table_src_rec=TCGA_REC_SRC
+      else:
+        table_src_rec=table_src
+      nrows.extend(create_table_meta_row(collec, table_name, dataset_id, version,table_src, table_src_rec))
       colrows.extend(create_column_meta_rows(collec, table_name, dataset_id))
   return([nrows,colrows])
 
 if __name__=="__main__":
   ret=addTables("idc-dev","idc_v11_clinical","idc_v11","CPTAC",None,"clinical",CPTAC_SRC,"submitter_id", False)
   ret=addTables("idc-dev","idc_v11_clinical","idc_v11","TCGA",None,"clinical",TCGA_SRC,"case_barcode", False)
-  for colec in NLST_SRCA:
+  '''for colec in NLST_SRCA:
     sufx=colec.split('_')[1].lower()
     src=NLST+'.'+colec
-    nret = addTables("idc-dev", "idc_v11_clinical", "idc_v11", "NCI Trials", "nlst", sufx, src, "pid",True)
-    rr=1
+    nret = addTables("idc-dev", "idc_v11_clinical", "idc_v11", "NCI Trials", "nlst", sufx, src, "pid",True)'''
   rr=1
 
 

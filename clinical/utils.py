@@ -60,7 +60,8 @@ def getHist(hist,table_id):
   try:
     job = client.query(query)
     for row in job.result():
-      tbl = row['table_name']
+      nmInd = row['table_name'].split('.')
+      tbl = nmInd[len(nmInd)-1]
       cdic={}
       cdic['idc_version_table_added'] = row['idc_version_table_added']
       cdic['table_added_datetime'] = row['table_added_datetime']
