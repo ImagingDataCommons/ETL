@@ -368,7 +368,8 @@ def export_meta_to_json(clinJson,filenm_meta,filenm_summary):
 
   hist ={}
   table_id = DEFAULT_PROJECT + "." + LAST_DATASET + '.table_metadata'
-  getHist(hist, table_id)
+  if not LAST_DATASET == DEFAULT_DATASET:
+    getHist(hist, table_id)
   metaArr=[]
   sumArr=[]
   for coll in clinJson:

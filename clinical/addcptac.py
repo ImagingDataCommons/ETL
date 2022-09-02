@@ -11,6 +11,7 @@ CPTAC_SRC='isb-cgc-bq.CPTAC_versioned.clinical_gdc_r31'
 NLST='idc-dev-etl.idc_v11_pub'
 NLST_SRCA=['nlst_canc','nlst_ctab','nlst_ctabc','nlst_prsn','nlst_screen']
 IDC_VERSION='idc_v11'
+IDC_VERSION_LAST='idc_v11'
 TCGA_SRC='idc-dev-etl.'+IDC_VERSION+'_pub.tcga_clinical_rel9'
 
 IDC_COLLECTION_ID_SRC='`idc-dev-etl.idc_v11_pub.original_collections_metadata`'
@@ -43,7 +44,8 @@ def create_table_meta_row(collec,table_name,dataset_id,version,src_table_id, tab
 
   hist={}
   table_id = dataset_id + '.table_metadata'
-  getHist(hist, table_id)
+  if not IDC_VERSION==IDC_VERSION_LAST:
+    getHist(hist, table_id)
 
   sumArr=[]
   #for coll in cptac:
@@ -77,7 +79,7 @@ def create_table_meta_row(collec,table_name,dataset_id,version,src_table_id, tab
     sumDic['idc_version_table_prior'] = version
     sumDic['idc_version_table_updated'] = version
     sumDic['table_updated_datetime'] = str(datetime.now(pytz.utc))
-    sumDic['number_batches'] = 0
+    sumDic['number_batches'] = 1
   sumArr.append(sumDic)
   return sumArr
 
