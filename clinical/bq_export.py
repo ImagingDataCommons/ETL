@@ -131,6 +131,7 @@ def checkData():
   query = "select distinct table_name from "+dataset_id+".table_metadata "
   job = client.query(query)
   tableL = [row.table_name for row in job.result()]
+  tableL = [x.split('.')[len(x.split('.'))-1] for x in tableL]
   tableL.sort()
   if not (tableNms == tableL):
     print("table_metadata list is incorrect")
@@ -138,6 +139,7 @@ def checkData():
   query = "select distinct table_name from " + dataset_id + ".column_metadata "
   job = client.query(query)
   tableL = [row.table_name for row in job.result()]
+  tableL = [x.split('.')][len(x.split('.'))-1] for x in tableL]
   tableL.sort()
   if not (tableNms == tableL):
     print("column_metadata table list is incorrect")
