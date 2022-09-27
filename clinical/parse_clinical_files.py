@@ -21,9 +21,9 @@ ORIGINAL_SRCS_PATH= '/Users/george/fed/actcianable/output/clinical_files/'
 NOTES_PATH = '/Users/george/fed/actcianable/output/'
 DEFAULT_SUFFIX='clinical'
 DEFAULT_DESCRIPTION='clinical data'
-DEFAULT_DATASET ='idc_v11_clinical'
+DEFAULT_DATASET ='idc_v12_clinical'
 DEFAULT_PROJECT ='idc-dev-etl'
-CURRENT_VERSION = 'idc_v11'
+CURRENT_VERSION = 'idc_v12'
 LAST_VERSION = 'idc_v11'
 LAST_DATASET = 'idc_v11_clinical'
 DESTINATION_FOLDER='./clin_'+CURRENT_VERSION+'/'
@@ -534,6 +534,8 @@ def export_meta_to_json(clinJson,filenm_meta,filenm_summary):
 def reform_case(case_id, colec,type):
   if type == "same":
     ret = case_id
+  elif type == "acrin 6698":
+    ret = "ACRIN-6698-"+case_id
   elif type == "acrin format":
     ret=colec+'-'+case_id.rjust(3,'0')
   elif type == "switch dash":
