@@ -8,14 +8,14 @@ DEFAULT_SUFFIX="clinical"
 DEFAULT_DESCRIPTION="clinical data"
 
 CPTAC_SRC='isb-cgc-bq.CPTAC_versioned.clinical_gdc_r31'
-NLST='idc-dev-etl.idc_v11_pub'
+NLST='idc-dev-etl.idc_v12_pub'
 NLST_SRCA=['nlst_canc','nlst_ctab','nlst_ctabc','nlst_prsn','nlst_screen']
-IDC_VERSION='idc_v11'
+IDC_VERSION='idc_v12'
 IDC_VERSION_LAST='idc_v11'
 TCGA_SRC='idc-dev-etl.'+IDC_VERSION+'_pub.tcga_clinical_rel9'
 
-IDC_COLLECTION_ID_SRC='`idc-dev-etl.idc_v11_pub.original_collections_metadata`'
-IDC_PATIENT_ID_SRC='`idc-dev-etl.idc_v11_pub.dicom_all`'
+IDC_COLLECTION_ID_SRC='`idc-dev-etl.idc_v12_pub.original_collections_metadata`'
+IDC_PATIENT_ID_SRC='`idc-dev-etl.idc_v12_pub.dicom_all`'
 
 
 SOURCE_BATCH_COL='source_batch'
@@ -29,7 +29,6 @@ TCGA_REC_SRC='bigquery-public-data.'+IDC_VERSION+'.tcga_clinical_rel9'
 
 def json_serial(obj):
     """JSON serializer for objects not serializable by default json code"""
-
     if isinstance(obj, (datetime, date)):
         return obj.isoformat()
     raise TypeError ("Type %s not serializable" % type(obj))
