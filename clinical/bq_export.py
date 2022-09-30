@@ -11,6 +11,7 @@ DEFAULT_DESCRIPTION='clinical data'
 DEFAULT_PROJECT ='idc-dev-etl'
 #DEFAULT_PROJECT ='idc-dev'
 CURRENT_VERSION = 'idc_v11'
+FINAL_PROJECT='bigquery-public-data'
 
 DATASET=CURRENT_VERSION+'_clinical'
 
@@ -139,7 +140,7 @@ def checkData():
   query = "select distinct table_name from " + dataset_id + ".column_metadata "
   job = client.query(query)
   tableL = [row.table_name for row in job.result()]
-  tableL = [x.split('.')][len(x.split('.'))-1] for x in tableL]
+  tableL = [x.split('.')[len(x.split('.'))-1] for x in tableL]
   tableL.sort()
   if not (tableNms == tableL):
     print("column_metadata table list is incorrect")
@@ -149,9 +150,10 @@ def checkData():
     table=client.get_table(table_id)
     colNames=[col.name for col in table.schema]
     colNames.sort()
-
-    query = "select table_name,column from " + dataset_id + ".column_metadata where table_name= '"+tableNm+"'"
+    final_id=FINAL_PROJECT+"."+CURRENT_VERSION+"_clinical."+tableNm 
+    query = "select table_name,column from " + dataset_id + ".column_metadata where table_name= '"+final_id+"'"
     job = client.query(query)
+    print(query)
     colL = [row.column for row in job.result()]
     colL.sort()
     if not (colNames == colL):
@@ -237,6 +239,6 @@ def load_all(project,dataset,version):
 
 
 if __name__=="__main__":
-  load_all(DEFAULT_PROJECT, DATASET,CURRENT_VERSION)
+  #load_all(DEFAULT_PROJECT, DATASET,CURRENT_VERSION)
   checkData()
 
