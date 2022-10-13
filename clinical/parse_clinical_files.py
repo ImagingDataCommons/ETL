@@ -140,10 +140,10 @@ def processSrc(fpath, colName, srcInfo):
     engine = 'pyxlsb'
   df=[]
   if extension == '.csv':
-    df = pd.read_csv(filenm)
+    df = pd.read_csv(filenm, keep_default_na=False)
     sheetnm=''
   else:
-    dfi = pd.read_excel(filenm, engine=engine, sheet_name=None)
+    dfi = pd.read_excel(filenm, engine=engine, sheet_name=None, keep_default_na=False)
     sheetnm = list(dfi.keys())[sheetNo]
     df = dfi[sheetnm]
   if pivot:
@@ -405,7 +405,9 @@ def export_meta_to_json(clinJson,filenm_meta,filenm_summary):
           full_table_name=DATASET_PATH+'.'+table_name
           try:
             post_process_src = './'+DESTINATION_FOLDER+'/'+clinJson[coll]['mergeBatch'][k]['outfile']
+            post_process_src_tr = post_process_src.rsplit('/')[0]
             post_process_src_current_md5 = get_md5(post_process_src)
+
           except:
             pass
           num_batches = len(clinJson[coll]['mergeBatch'][k]['srcs'])
@@ -415,25 +417,27 @@ def export_meta_to_json(clinJson,filenm_meta,filenm_summary):
             nsrc = {}
             nsrc['srcs'] = src
             rootfile = ORIGINAL_SRCS_PATH + colldir + '/' + src[0]
-            nsrc['update_md5'] = get_md5(rootfile)
+            nsrc['md5'] = get_md5(rootfile)
             src_info.append(nsrc)
 
           sumDic['collection_id'] = collection_id
           sumDic['table_name'] = full_table_name
           sumDic['table_description'] = table_description
-          sumDic['post_process_src'] = post_process_src
+          sumDic['post_process_src'] = post_process_src_tr
 
           if table_name in hist:
             for nkey in hist[table_name]:
               if (nkey not in sumDic) and not (nkey == 'source_info'):
                 sumDic[nkey] = hist[table_name][nkey]
-            if (hist[table_name]['post_process_src'] != post_process_src) or (post_process_src_current_md5 != hist[table_name]['post_process_src_updated_md5']):
-              sumDic['idc_version_table_prior'] = hist[table_name]['idc_version_table_updated']
-              sumDic['post_process_src_prior_md5'] = hist[table_name]['post_process_src_updated_md5']
+            if (hist[table_name]['post_process_src'].rsplit('/')[0] != post_process_src_tr) or (post_process_src_current_md5 != hist[table_name]['post_process_src_updated_md5']):
+              sumDic['idc_version_table_prior'] = hist[table_name]['idc_version_table_updated'].rsplit('/')[0]
+              sumDic['post_process_src_prior_md5'] = hist[table_name]['post_process_src_updated_md5'].rsplit('/')[0]
+
               sumDic['idc_version_table_updated'] = CURRENT_VERSION
+              sumDic['post_process_src_updated_md5'] = post_process_src_current_md5
               sumDic['table_updated_datetime'] = str(datetime.now(pytz.utc))
 
-              for i in range(len(src_info)):
+              '''for i in range(len(src_info)):
                 if (i < len(hist[table_name]['source_info'])) and (src_info[i]['srcs'][0] == hist[table_name]['source_info'][i]['srcs'][0]):
                   src_info[i]['added_md5'] = hist[table_name]['source_info'][i]['added_md5']
                   if src_info[i]['update_md5'] == hist[table_name]['source_info'][i]['update_md5']:
@@ -442,7 +446,7 @@ def export_meta_to_json(clinJson,filenm_meta,filenm_summary):
                     src_info[i]['prior_md5'] = hist[table_name]['source_info'][i]['update_md5']
                 else:
                   src_info[i]['added_md5'] = src_info[i]['update_md5']
-                  src_info[i]['prior_md5'] = src_info[i]['prior_md5']
+                  src_info[i]['prior_md5'] = src_info[i]['prior_md5']'''
           else:
             sumDic['idc_version_table_added']=CURRENT_VERSION
             sumDic['table_added_datetime']=str(datetime.now(pytz.utc))
@@ -454,9 +458,9 @@ def export_meta_to_json(clinJson,filenm_meta,filenm_summary):
             sumDic['table_updated_datetime'] = str(datetime.now(pytz.utc))
             sumDic['post_process_src_updated_md5'] = post_process_src_current_md5
             sumDic['number_batches']=num_batches
-            for i in range(len(src_info)):
+            '''for i in range(len(src_info)):
               src_info[i]['added_md5'] = src_info[i]['update_md5']
-              src_info[i]['prior_md5'] = src_info[i]['update_md5']
+              src_info[i]['prior_md5'] = src_info[i]['update_md5']'''
 
           sumDic['source_info']=src_info
 
@@ -616,7 +620,7 @@ def parse_acrin_collection(clinJson,coll):
 
       srcf=npath+'/'+form_id+'.csv'
       if path.exists(srcf):
-        print(srcf)
+        #print(srcf)
 
         clinJson[coll]['tabletypes'].append({form_id:desc})
         df = pd.read_csv(srcf)
@@ -710,7 +714,7 @@ def parse_conventional_collection(clinJson,coll):
           lll=1
           pass
         ptRowIds.append(patientIdRow)
-        print("strcInfo " + str(srcInfo))
+        #print("strcInfo " + str(srcInfo))
         if not ('type' in srcInfo) or not (srcInfo['type'] == 'json'):
           [headers, df, sheetnm] = processSrc(ORIGINAL_SRCS_PATH, colldir, srcInfo)
           #df['source_batch'] = batchSetInd
@@ -848,6 +852,8 @@ if __name__=="__main__":
     if wiki_collec in clinJson:
       clinJson[wiki_collec]['idc_webapp'] = idc_webapp
       clinJson[wiki_collec]['tcia_api'] = tcia_api
+    else:
+      print("not included " +wiki_collec)
 
   for colInd in range(len(collec)):
     coll=collec[colInd]
