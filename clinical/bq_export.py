@@ -9,8 +9,11 @@ DEFAULT_SUFFIX='clinical'
 DEFAULT_DESCRIPTION='clinical data'
 
 DEFAULT_PROJECT ='idc-dev-etl'
+DICOM_META='idc-dev-etl.idc_current.dicom_all'
+
+
 #DEFAULT_PROJECT ='idc-dev'
-CURRENT_VERSION = 'idc_v11'
+CURRENT_VERSION = 'idc_v12'
 FINAL_PROJECT='bigquery-public-data'
 
 DATASET=CURRENT_VERSION+'_clinical'
@@ -38,9 +41,7 @@ def create_meta_summary(project, dataset,cptacColRows):
           bigquery.SchemaField("number_batches","INTEGER"),
           bigquery.SchemaField("source_info","RECORD",mode="REPEATED",
               fields=[bigquery.SchemaField("srcs","STRING",mode="REPEATED"),
-              bigquery.SchemaField("added_md5","STRING"),
-              bigquery.SchemaField("prior_md5","STRING"),
-              bigquery.SchemaField("update_md5","STRING"),
+              bigquery.SchemaField("md5","STRING"),
               bigquery.SchemaField("table_last_modified", "STRING"),
               bigquery.SchemaField("table_size", "INTEGER"),
             ]  
@@ -113,9 +114,21 @@ def load_meta(project, dataset, filenm,cptacRows):
     job=client.load_table_from_json(metaD, table, job_config=job_config)
     print(job.result())
 
-def checkData():
+def checkData():  
   dataset_id=DEFAULT_PROJECT+'.'+DATASET
   client = bigquery.Client(project=DEFAULT_PROJECT)
+  query = "select distinct idc_webapp_collection_id, PatientID from "+DICOM_META+" order by idc_webapp_collection_id"
+  job = client.query(query)
+  ids={}
+  for row in job.result():
+    colec=row['idc_webapp_collection_id']
+    cid=row['PatientID']
+    if not (colec in ids):
+        print("Collecs "+colec)
+        ids[colec]={}
+    ids[colec][cid]=1
+
+
   tables= client.list_tables(dataset_id)
   tableNms=[tb.table_id for tb in tables]
   if ("table_metadata" in tableNms):
@@ -147,6 +160,8 @@ def checkData():
 
   for tableNm in tableNms:
     table_id=dataset_id+'.'+tableNm
+    colec=tableNm.rsplit('_',1)[0]
+    print("colec "+colec)
     table=client.get_table(table_id)
     colNames=[col.name for col in table.schema]
     colNames.sort()
@@ -159,6 +174,16 @@ def checkData():
     if not (colNames == colL):
       print ("mismatch in columns for table "+tableNm+"!")
     i=1
+    numExt=0
+    curDic=ids[colec]
+    query = "select distinct dicom_patient_id from " + table_id
+    job = client.query(query)
+    for row in job.result():
+      cid=row['dicom_patient_id']
+      if not (cid in curDic):
+        numExt=numExt+1
+    if (numExt>0):
+      print("for table "+tableNm+ " "+str(numExt)+" ids not in dicom ")    
 
   i=1
 
@@ -222,23 +247,23 @@ def load_all(project,dataset,version):
   ds = client.create_dataset(dataset_id)
 
 
-  cptac=addTables(DEFAULT_PROJECT, DATASET, CURRENT_VERSION, "CPTAC", None, "clinical", CPTAC_SRC, "submitter_id", False)
-  tcga=addTables(DEFAULT_PROJECT, DATASET, CURRENT_VERSION, "TCGA", None, "clinical", TCGA_SRC, "case_barcode", False)
+  #cptac=addTables(DEFAULT_PROJECT, DATASET, CURRENT_VERSION, "CPTAC", None, "clinical", CPTAC_SRC, "submitter_id", False)
+  #tcga=addTables(DEFAULT_PROJECT, DATASET, CURRENT_VERSION, "TCGA", None, "clinical", TCGA_SRC, "case_barcode", False)
 
-  bqSrcMetaTbl = cptac[0]+tcga[0]
-  bqSrcMetaCol = cptac[1]+tcga[1]
+  #bqSrcMetaTbl = cptac[0]+tcga[0]
+  #bqSrcMetaCol = cptac[1]+tcga[1]
 
 
-  create_meta_summary(project, dataset,bqSrcMetaTbl)
+  create_meta_summary(project, dataset,[])
 
-  create_meta_table(project, dataset)
-  filenm="./"+CURRENT_VERSION+"_column_metadata.json"
-  load_meta(project,dataset,filenm,bqSrcMetaCol)
-  dirnm="./clin_"+CURRENT_VERSION
-  load_clin_files(project,dataset,dirnm)
+  #create_meta_table(project, dataset)
+  #filenm="./"+CURRENT_VERSION+"_column_metadata.json"
+  #load_meta(project,dataset,filenm,bqSrcMetaCol)
+  #dirnm="./clin_"+CURRENT_VERSION
+  #load_clin_files(project,dataset,dirnm)
 
 
 if __name__=="__main__":
-  #load_all(DEFAULT_PROJECT, DATASET,CURRENT_VERSION)
-  checkData()
+  load_all(DEFAULT_PROJECT, DATASET,CURRENT_VERSION)
+  #checkData()
 
