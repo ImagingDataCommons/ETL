@@ -34,7 +34,7 @@ def json_serial(obj):
     raise TypeError ("Type %s not serializable" % type(obj))
 
 
-def create_table_meta_row(collec,table_name,dataset_id,version,src_table_id, table_src_rec):
+def create_table_meta_row(collec,table_name,dataset_id,version,src_table_id, table_src_rec, dataset_id_lst,version_lst):
   full_table_name = FINAL_PROJ + IDC_VERSION + '_clinical.' + table_name
   client = bigquery.Client()
   src_table = client.get_table(src_table_id)
@@ -42,9 +42,10 @@ def create_table_meta_row(collec,table_name,dataset_id,version,src_table_id, tab
   table_size = str(src_table.num_bytes)
 
   hist={}
-  table_id = dataset_id + '.table_metadata'
-  if not IDC_VERSION==IDC_VERSION_LAST:
-    getHist(hist, table_id)
+  #table_id = dataset_id + '.table_metadata'
+  table_id_lst= dataset_id_lst + '.table_metadata'
+  if not version==version_lst:
+    getHist(hist, table_id_lst)
 
   sumArr=[]
   #for coll in cptac:
@@ -198,26 +199,24 @@ def get_ids(program,collection):
 
   return cptacDic
 
-def addTables(proj_id, dataset_id, version,program,collection,subscript,table_src, id_col,intIds):
+def addTables(proj_id, dataset_id, version,program,collection,subscript,table_src, id_col,intIds,dataset_id_lst,version_lst):
   nrows=[]
   colrows=[]
   cptac = get_ids(program, collection)
   dataset_id = proj_id + "." + dataset_id
+  dataset_id_lst = proj_id + "." + dataset_id_lst
   for collec in cptac:
     table_name = collec + "_" + subscript
     numr = copy_table(dataset_id, table_name, cptac[collec],table_src, id_col, intIds)
     if numr > 0:
-      if program=="TCGA":
-        table_src_rec=TCGA_REC_SRC
-      else:
-        table_src_rec=table_src
-      nrows.extend(create_table_meta_row(collec, table_name, dataset_id, version,table_src, table_src_rec))
+      table_src_rec=table_src
+      nrows.extend(create_table_meta_row(collec, table_name, dataset_id, version,table_src, table_src_rec,dataset_id_lst,version_lst))
       colrows.extend(create_column_meta_rows(collec, table_name, dataset_id))
   return([nrows,colrows])
 
 if __name__=="__main__":
-  ret=addTables("idc-dev","idc_v11_clinical","idc_v11","CPTAC",None,"clinical",CPTAC_SRC,"submitter_id", False)
-  ret=addTables("idc-dev","idc_v11_clinical","idc_v11","TCGA",None,"clinical",TCGA_SRC,"case_barcode", False)
+  #ret=addTables("idc-dev","idc_v11_clinical","idc_v11","CPTAC",None,"clinical",CPTAC_SRC,"submitter_id", False)
+  #ret=addTables("idc-dev","idc_v11_clinical","idc_v11","TCGA",None,"clinical",TCGA_SRC,"case_barcode", False)
   '''for colec in NLST_SRCA:
     sufx=colec.split('_')[1].lower()
     src=NLST+'.'+colec

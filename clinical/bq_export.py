@@ -7,18 +7,18 @@ from addcptac import addTables, CPTAC_SRC,TCGA_SRC
 
 DEFAULT_SUFFIX='clinical'
 DEFAULT_DESCRIPTION='clinical data'
-
 DEFAULT_PROJECT ='idc-dev-etl'
-DICOM_META='idc-dev-etl.idc_current.dicom_all'
-
+DICOM_META='idc-dev.idc_current.dicom_all'
 
 #DEFAULT_PROJECT ='idc-dev'
 CURRENT_VERSION = 'idc_v12'
+LAST_VERSION = 'idc_v11'
 FINAL_PROJECT='bigquery-public-data'
 
 DATASET=CURRENT_VERSION+'_clinical'
+LAST_DATASET=LAST_VERSION+'_clinical'
 
-def create_meta_summary(project, dataset,cptacColRows):
+def create_meta_summary(project, dataset, cptacColRows):
   client = bigquery.Client(project=project)
   dataset_id= project+"."+dataset
   table_id = dataset_id+".table_metadata"
@@ -109,7 +109,6 @@ def load_meta(project, dataset, filenm,cptacRows):
     f=open(filenm,'r')
     metaD=json.load(f)
     f.close()
-    #cptacRows = create_column_meta_cptac_rows(cptac, dataset_id)
     metaD.extend(cptacRows)
     job=client.load_table_from_json(metaD, table, job_config=job_config)
     print(job.result())
@@ -183,9 +182,7 @@ def checkData():
       if not (cid in curDic):
         numExt=numExt+1
     if (numExt>0):
-      print("for table "+tableNm+ " "+str(numExt)+" ids not in dicom ")    
-
-  i=1
+      print("for table "+tableNm+ " "+str(numExt)+" ids not in dicom ")
 
 
 def load_clin_files(project, dataset,cpath):
@@ -236,9 +233,7 @@ def load_clin_files(project, dataset,cpath):
   print(str(error_sets)) 
 
 
-
-
-def load_all(project,dataset,version):
+def load_all(project,dataset,version,last_dataset, last_version):
   client = bigquery.Client(project=project)
   dataset_id=project+"."+dataset
   ds = bigquery.Dataset(dataset_id)
@@ -247,23 +242,21 @@ def load_all(project,dataset,version):
   ds = client.create_dataset(dataset_id)
 
 
-  #cptac=addTables(DEFAULT_PROJECT, DATASET, CURRENT_VERSION, "CPTAC", None, "clinical", CPTAC_SRC, "submitter_id", False)
-  #tcga=addTables(DEFAULT_PROJECT, DATASET, CURRENT_VERSION, "TCGA", None, "clinical", TCGA_SRC, "case_barcode", False)
+  cptac=addTables(project, dataset, version, "CPTAC", None, "clinical", CPTAC_SRC, "submitter_id", False, last_dataset, last_version)
+  tcga=addTables(project, dataset, version, "TCGA", None, "clinical", TCGA_SRC, "case_barcode", False, last_dataset, last_version)
 
-  #bqSrcMetaTbl = cptac[0]+tcga[0]
-  #bqSrcMetaCol = cptac[1]+tcga[1]
+  bqSrcMetaTbl = cptac[0]+tcga[0]
+  bqSrcMetaCol = cptac[1]+tcga[1]
 
-
-  create_meta_summary(project, dataset,[])
-
-  #create_meta_table(project, dataset)
-  #filenm="./"+CURRENT_VERSION+"_column_metadata.json"
-  #load_meta(project,dataset,filenm,bqSrcMetaCol)
-  #dirnm="./clin_"+CURRENT_VERSION
-  #load_clin_files(project,dataset,dirnm)
+  create_meta_summary(project, dataset, bqSrcMetaTbl)
+  create_meta_table(project, dataset)
+  filenm="./"+CURRENT_VERSION+"_column_metadata.json"
+  load_meta(project,dataset,filenm,bqSrcMetaCol)
+  dirnm="./clin_"+CURRENT_VERSION
+  load_clin_files(project,dataset,dirnm)
 
 
 if __name__=="__main__":
-  load_all(DEFAULT_PROJECT, DATASET,CURRENT_VERSION)
+  load_all(DEFAULT_PROJECT, DATASET,CURRENT_VERSION, LAST_DATASET, LAST_VERSION)
   #checkData()
 
