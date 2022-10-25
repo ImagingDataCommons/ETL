@@ -498,12 +498,14 @@ def export_meta_to_json(clinJson,filenm_meta,filenm_summary):
 
             if ('dictinfo' in headerD) and ('values' in headerD['dictinfo']):
               ndic['values'] = headerD['dictinfo']['values']
+              ndic['values_source'] ='provided dictionary'
               for val in ndic['values']:
                 if val['option_code'].lower() == 'nan':
                   val['option_code'] = '\"' + val['option_code'] + '\"'
             elif 'uniques' in headerD:
               num_values=len(headerD['uniques'])
               if (num_values<21):
+                ndic['values_source'] = 'derived from inspection of values'
                 #ndic['uniques'] = headerD['uniques']
                 ndic['values']=[]
                 for val in headerD['uniques']:
