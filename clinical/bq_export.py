@@ -8,7 +8,7 @@ from addcptac import addTables, CPTAC_SRC,TCGA_SRC
 DEFAULT_SUFFIX='clinical'
 DEFAULT_DESCRIPTION='clinical data'
 DEFAULT_PROJECT ='idc-dev-etl'
-DICOM_META='idc-dev.idc_current.dicom_all'
+DICOM_META='idc-dev-etl.idc_current.dicom_all'
 
 #DEFAULT_PROJECT ='idc-dev'
 CURRENT_VERSION = 'idc_v12'
@@ -85,6 +85,7 @@ def create_meta_table(project, dataset):
                   bigquery.SchemaField("option_description","STRING"),
              ],
             ),
+           bigquery.SchemaField("values_source",STRING, NULLABLE) 
            bigquery.SchemaField("files", "STRING", mode="REPEATED"),
            bigquery.SchemaField("sheet_names","STRING",mode="REPEATED"),
            bigquery.SchemaField("batch", "INTEGER",mode="REPEATED"),
@@ -258,5 +259,5 @@ def load_all(project,dataset,version,last_dataset, last_version):
 
 if __name__=="__main__":
   load_all(DEFAULT_PROJECT, DATASET,CURRENT_VERSION, LAST_DATASET, LAST_VERSION)
-  #checkData()
+  checkData()
 

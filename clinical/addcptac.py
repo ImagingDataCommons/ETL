@@ -134,6 +134,7 @@ def create_column_meta_rows(collec, table_name,dataset_id):
       valSet[rec['column']] = [str(x) for x in valSet[rec['column']]]
       valSet[rec['column']].sort()
       rec['values'] = [{"option_code":x} for x in valSet[rec['column']]]
+      rec['values_source']='derived from inspection of values'
   return newArr
 
 def copy_table(dataset_id, table_name, lst, src_table_id, id_col, intIds):
