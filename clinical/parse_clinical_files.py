@@ -540,10 +540,14 @@ def export_meta_to_json(clinJson,filenm_meta,filenm_summary):
 def reform_case(case_id, colec,type):
   if type == "same":
     ret = case_id
+  elif type == "breast":
+    ret = case_id.replace("BreastDX","BreastDx")
   elif type == "acrin 6698":
     ret = "ACRIN-6698-"+case_id
   elif type == "acrin format":
     ret=colec+'-'+case_id.rjust(3,'0')
+  elif type == "acrin flt format":
+    ret=colec+'_'+case_id.rjust(3,'0')
   elif type == "switch dash":
     ret=case_id.replace('_','-')
   elif type == "3DCT-RT":
@@ -555,7 +559,7 @@ def reform_case(case_id, colec,type):
   elif type=="lung_pt":
     ret = "Lung_Dx-"+case_id
   elif type=='add colec':
-    ret=colec+'_'+case_id
+    ret=colec+'-'+case_id
   return ret
 
 def add_tcia_case_id(mergeB, tcia_coll,type):
