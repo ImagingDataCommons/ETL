@@ -85,7 +85,7 @@ def create_meta_table(project, dataset):
                   bigquery.SchemaField("option_description","STRING"),
              ],
             ),
-           bigquery.SchemaField("values_source",STRING, NULLABLE) 
+           bigquery.SchemaField("values_source","STRING"),
            bigquery.SchemaField("files", "STRING", mode="REPEATED"),
            bigquery.SchemaField("sheet_names","STRING",mode="REPEATED"),
            bigquery.SchemaField("batch", "INTEGER",mode="REPEATED"),
