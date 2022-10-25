@@ -14,7 +14,7 @@ import hashlib
 import pytz
 from datetime import datetime
 import os
-from utils import getHist, read_clin_file
+from utils import getHist, read_clin_file, parseIspyDic
 #import copy.deepcopy
 
 ORIGINAL_SRCS_PATH= '/Users/george/fed/actcianable/output/clinical_files/'
@@ -749,20 +749,22 @@ def parse_conventional_collection(clinJson,coll):
       # analyzeDataFrame(clinJson[coll])
       # write_dataframe_to_json('./clin/',coll,clinJson)'''
 
-def parse_dict(fpath,clinJson, coll):
+def parse_dict(fpath,collec,ndic,indx):
   data_dict={}
   colldir = coll.replace('/', '_').replace(':', '_')
-  filenm=fpath + colldir + '/' +clinJson[coll]["dict"]["filenm"]
-  sheetNo=clinJson[coll]["dict"]["sheet"]
+  filenm=fpath + colldir + '/' +ndic["filenm"]
+  sheetNo="0"
+  if "sheet" in ndic:
+    sheetNo=ndic["sheet"]
   skipRows=None
-  if "skipRows" in clinJson[coll]["dict"]:
-    skipRows= clinJson[coll]["dict"]['skipRows']
+  if "skipRows" in ndic:
+    skipRows= ndic["skipRows"]
   header = 0
-  if "header" in clinJson[coll]["dict"]:
-    if clinJson[coll]["dict"]["header"]=="None":
+  if "header" in ndic:
+    if ndic["header"]=="None":
       header = None
     else:
-      header = clinJson[coll]["dict"]["header"]
+      header = ndic["header"]
 
   extension = path.splitext(filenm)[1]
   engine = 'xlrd'
@@ -772,14 +774,16 @@ def parse_dict(fpath,clinJson, coll):
     engine = 'pyxlsb'
   df = []
   if extension == '.csv':
-    df = pd.read_csv(filenm)
+    df = pd.read_csv(filenm, header=header, skiprows=skipRows,keep_default_na=False)
     sheetnm = ''
   else:
-    dfi = pd.read_excel(filenm, engine=engine, sheet_name=None, skiprows=skipRows, header=header)
+    dfi = pd.read_excel(filenm, engine=engine, sheet_name=None, skiprows=skipRows, header=header,keep_default_na=False)
     sheetnm = list(dfi.keys())[sheetNo]
     df = dfi[sheetnm]
     rr=1
-  if (clinJson[coll]["dict"]["form"]=="ispy2"):
+  if (ndic["form"] =="ispy"):
+    data_dict=parseIspyDic(df)
+  elif (ndic["form"]=="ispy2"):
     for index,row in df.iterrows():
       column = ' '.join(row['FIELD'].split())
       column = formatForBQ([[column]],True)[0]
@@ -795,7 +799,7 @@ def parse_dict(fpath,clinJson, coll):
           data_dict[column]['opts'].append({"option_code":optA[0], "option_description":optA[1]})
         else:
           data_dict[column]['opts'].append({"option_code": optA[0]})
-  elif (clinJson[coll]["dict"]["form"]=="lidc"):
+  elif (ndic["form"]=="lidc"):
     for col in list(df.columns):
       column_label = specialHeaderFormat(col,"lidc")
       column = formatForBQ([[column_label]],True)[0]
@@ -807,7 +811,7 @@ def parse_dict(fpath,clinJson, coll):
         for op in opts:
           optA=op.split('=')
           data_dict[column]['opts'].append({"option_code": optA[0], "option_description": optA[1]})
-  elif (clinJson[coll]["dict"]["form"]=="hcc_tace"):
+  elif (ndic["form"]=="hcc_tace"):
     spec={"Y = 1 N = 0", "1=Male, 2=Female"}
     for index, row in df.iterrows():
       column = formatForBQ([[row[0]]], True)[0]
@@ -816,17 +820,30 @@ def parse_dict(fpath,clinJson, coll):
         column_label = row[0]+": "+row[1]
       data_dict[column] = {}
       data_dict[column]['label'] = column_label
+  elif (ndic["form"]=="covid"):
+    for index, row in df.iterrows():
+      column = formatForBQ([[row['column_name']]], True)[0]
+      column_label =row['description']
+      data_dict[column] = {}
+
+      if len(row['column_counts'])>0:
+          data_dict[column]['opts'] = []
+          optJ=json.loads(row['column_counts'].replace('\'','"').replace('False','"False"').replace('True','"True"'))
+          for nkey in optJ:
+            data_dict[column]['opts'].append({"option_code": nkey})
+
+      data_dict[column]['label'] = column_label
 
 
 
-  for btch in clinJson[coll]['mergeBatch']:
-    for nkey in btch['headers']:
-      if nkey in data_dict:
-        btch['headers'][nkey][0]['dictinfo'] = {}
-        btch['headers'][nkey][0]['dictinfo']['column'] = nkey
-        btch['headers'][nkey][0]['dictinfo']['column_label'] = data_dict[nkey]['label']
-        if 'opts' in data_dict[nkey]:
-          btch['headers'][nkey][0]['dictinfo']['values'] = data_dict[nkey]['opts']
+  btch = collec['mergeBatch'][indx]
+  for nkey in btch['headers']:
+    if nkey in data_dict:
+      btch['headers'][nkey][0]['dictinfo'] = {}
+      btch['headers'][nkey][0]['dictinfo']['column'] = nkey
+      btch['headers'][nkey][0]['dictinfo']['column_label'] = data_dict[nkey]['label']
+      if 'opts' in data_dict[nkey]:
+        btch['headers'][nkey][0]['dictinfo']['values'] = data_dict[nkey]['opts']
 
 if __name__=="__main__":
   dirpath = Path(DESTINATION_FOLDER)
@@ -865,8 +882,10 @@ if __name__=="__main__":
     else:
       parse_conventional_collection(clinJson, coll)
       if "dict" in clinJson[coll]:
-        if ("use" in clinJson[coll]["dict"]) and clinJson[coll]["dict"]["use"]:
-          parse_dict(ORIGINAL_SRCS_PATH,clinJson, coll)
+        for indx in range(len(clinJson[coll]["dict"])):
+          ndic=clinJson[coll]["dict"][indx]
+          if ("use" in ndic) and ndic:
+            parse_dict(ORIGINAL_SRCS_PATH,clinJson[coll],ndic,indx)
           ff=1
       pass
 

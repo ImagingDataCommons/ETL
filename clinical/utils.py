@@ -2,6 +2,45 @@ from google.cloud import bigquery
 import json
 
 
+def parseIspyDic(df):
+  data_dict={}
+  prefix=''
+  hasPrefix = False
+  colA=[]
+  colD=''
+  optA=[]
+  for index, row in df.iterrows():
+    if ((len(row['Variable Name']) >0) and (len(row['Variable Description']) >0) and not hasPrefix) or ((len(row['Variable Name']) ==0) and (len(row['Variable Description']) ==0)):
+      for col in colA:
+        data_dict[col]={}
+        data_dict[col]['label']=colD
+        data_dict[col]['opts']=optA
+      hasPrefix = False
+      prefix = ''
+      optA=[]
+      colD=''
+      colA=[]
+
+    if (len(row['Variable Name']) >0) and (len(row['Variable Description']) >0):
+      if (':' in row['Variable Name']) and not hasPrefix:
+        hasPrefix= True
+        prefix = row['Variable Name'].replace(':','')
+        colD = row['Variable Description']
+      elif hasPrefix:
+        colA.append(prefix+" "+row['Variable Name'])
+        optPrA=row['Variable Description'].split("=")
+        optA.append( {"option_code": optPrA[0], "option_description": optPrA[1]}  )
+      else:
+        colD=row['Variable Description']
+        colA=[row['Variable Name']]
+
+    elif (len(row['Variable Description']) >0):
+      optPrA = row['Variable Description'].split("=")
+      optA.append({"option_code": optPrA[0], "option_description": optPrA[1]})
+
+  return data_dict
+
+
 def read_clin_file(filenm):
   f =open(filenm,'r')
   clinJson=json.load(f)
