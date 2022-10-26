@@ -405,7 +405,8 @@ def export_meta_to_json(clinJson,filenm_meta,filenm_summary):
           full_table_name=DATASET_PATH+'.'+table_name
           try:
             post_process_src = './'+DESTINATION_FOLDER+'/'+clinJson[coll]['mergeBatch'][k]['outfile']
-            post_process_src_tr = post_process_src.rsplit('/')[0]
+            post_process_src_sp = post_process_src.split('/')
+            post_process_src_tr = post_process_src_sp[len(post_process_src_sp)-1]
             post_process_src_current_md5 = get_md5(post_process_src)
 
           except:
