@@ -430,13 +430,16 @@ def export_meta_to_json(clinJson,filenm_meta,filenm_summary):
             for nkey in hist[table_name]:
               if (nkey not in sumDic) and not (nkey == 'source_info'):
                 sumDic[nkey] = hist[table_name][nkey]
-            if (hist[table_name]['post_process_src'].rsplit('/')[0] != post_process_src_tr) or (post_process_src_current_md5 != hist[table_name]['post_process_src_updated_md5']):
+            hist_post_process_src_sp = hist[table_name]['post_process_src'].split('/')
+            hist_post_process_src_tr = hist_post_process_src_sp[len(hist_post_process_src_sp) - 1]
+            if (hist_post_process_src_tr != post_process_src_tr) or (post_process_src_current_md5 != hist[table_name]['post_process_src_updated_md5']):
               sumDic['idc_version_table_prior'] = hist[table_name]['idc_version_table_updated'].rsplit('/')[0]
               sumDic['post_process_src_prior_md5'] = hist[table_name]['post_process_src_updated_md5'].rsplit('/')[0]
 
               sumDic['idc_version_table_updated'] = CURRENT_VERSION
               sumDic['post_process_src_updated_md5'] = post_process_src_current_md5
               sumDic['table_updated_datetime'] = str(datetime.now(pytz.utc))
+
 
               '''for i in range(len(src_info)):
                 if (i < len(hist[table_name]['source_info'])) and (src_info[i]['srcs'][0] == hist[table_name]['source_info'][i]['srcs'][0]):
