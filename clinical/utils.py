@@ -109,6 +109,7 @@ def getHist(hist,table_id):
       cdic['idc_version_table_prior'] = row['idc_version_table_prior']
       cdic['post_process_src_prior_md5'] = row['post_process_src_prior_md5']
       cdic['idc_version_table_updated'] = row['idc_version_table_updated']
+      cdic['table_updated_datetime'] = row['table_updated_datetime']
       cdic['post_process_src_updated_md5'] = row['post_process_src_updated_md5']
       cdic['number_batches'] = row['number_batches']
       cdic['source_info']=row['source_info']
