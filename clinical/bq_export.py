@@ -22,7 +22,7 @@ def create_meta_summary(project, dataset, cptacColRows):
   client = bigquery.Client(project=project)
   dataset_id= project+"."+dataset
   table_id = dataset_id+".table_metadata"
-  filenm=CURRENT_VERSION+"_table_metadata.json"
+  #filenm=CURRENT_VERSION+"_table_metadata.json"
   schema = [
           bigquery.SchemaField("collection_id","STRING"),
           bigquery.SchemaField("table_name","STRING"),
@@ -53,7 +53,8 @@ def create_meta_summary(project, dataset, cptacColRows):
   client.delete_table(table_id,not_found_ok=True)
   table = bigquery.Table(table_id, schema=schema)
   client.create_table(table)
-  job_config=bigquery.LoadJobConfig(source_format=bigquery.SourceFormat.NEWLINE_DELIMITED_JSON, schema=schema)
+
+  '''job_config=bigquery.LoadJobConfig(source_format=bigquery.SourceFormat.NEWLINE_DELIMITED_JSON, schema=schema)
   f=open(filenm,"r")
   metaD=json.load(f)
   f.close()
@@ -62,7 +63,26 @@ def create_meta_summary(project, dataset, cptacColRows):
   metaD.extend(cptacColRows)
   #del metaD[1]['source_info']
   job=client.load_table_from_json(metaD, table, job_config=job_config)
+  print(job.result())'''
+
+
+def load_meta_summary(project, dataset, cptacColRows,filenm):
+  client = bigquery.Client(project=project)
+  dataset_id = project + "." + dataset
+  table_id = dataset_id + ".table_metadata"
+  #filenm = CURRENT_VERSION + "_table_metadata.json"
+
+  job_config = bigquery.LoadJobConfig(source_format=bigquery.SourceFormat.NEWLINE_DELIMITED_JSON)
+  f = open(filenm, "r")
+  metaD = json.load(f)
+  f.close()
+  # cptacRow = create_table_meta_cptac_row(cptac, dataset_id, CURRENT_VERSION)
+  # cptacRow = addTables
+  metaD.extend(cptacColRows)
+  # del metaD[1]['source_info']
+  job = client.load_table_from_json(metaD, table, job_config=job_config)
   print(job.result())
+
 
 def create_meta_table(project, dataset):
 
@@ -185,10 +205,14 @@ def checkData():
       print("for table "+tableNm+ " "+str(numExt)+" ids not in dicom ")
 
 
-def load_clin_files(project, dataset,cpath):
+def load_clin_files(project, dataset,cpath,srcfiles):
   error_sets=[]  
   client = bigquery.Client(project=project)
-  ofiles = [f for f in listdir(cpath) if isfile(join(cpath,f))]
+  ofiles=[]
+  if srcfiles is None:
+    ofiles = [f for f in listdir(cpath) if isfile(join(cpath,f))]
+  else:
+    ofiles=srcfiles
   dataset_created={}
   for ofile in ofiles:
     cfile= join(cpath,ofile)
@@ -241,7 +265,6 @@ def load_all(project,dataset,version,last_dataset, last_version):
   client.delete_dataset(dataset_id, delete_contents=True, not_found_ok=True)
   ds = client.create_dataset(dataset_id)
 
-
   cptac=addTables(project, dataset, version, "CPTAC", None, "clinical", CPTAC_SRC, "submitter_id", False, last_dataset, last_version)
   tcga=addTables(project, dataset, version, "TCGA", None, "clinical", TCGA_SRC, "case_barcode", False, last_dataset, last_version)
 
@@ -250,13 +273,29 @@ def load_all(project,dataset,version,last_dataset, last_version):
 
   create_meta_summary(project, dataset, bqSrcMetaTbl)
   create_meta_table(project, dataset)
+  filenm = "./" + CURRENT_VERSION + "_table_metadata.json"
+  load_meta_summary(project, dataset, bqSrcMetaTbl,filenm)
+
   filenm="./"+CURRENT_VERSION+"_column_metadata.json"
   load_meta(project,dataset,filenm,bqSrcMetaCol)
-  dirnm="./clin_"+CURRENT_VERSION
-  load_clin_files(project,dataset,dirnm)
 
+  dirnm="./clin_"+CURRENT_VERSION
+  load_clin_files(project,dataset,dirnm,None)
+
+def load_update(updateNum,collec,project,dataset,version,last_dataset, last_version):
+  filenm = "./" + CURRENT_VERSION + "_" + updateNum + "table_metadata.json"
+  load_meta_summary(project, dataset, [], filenm)
+
+  filenm = "./" + CURRENT_VERSION + "_" + updateNum +"_column_metadata.json"
+  load_meta(project, dataset, filenm, [])
+
+  dirnm = "./clin_" + CURRENT_VERSION
+  load_clin_files(project, dataset, dirnm, None)
 
 if __name__=="__main__":
-  load_all(DEFAULT_PROJECT, DATASET,CURRENT_VERSION, LAST_DATASET, LAST_VERSION)
-  #checkData()
+  #load_all(DEFAULT_PROJECT, DATASET,CURRENT_VERSION, LAST_DATASET, LAST_VERSION)
+  updateNum="1"
+  srcfiles=["prostatex_findings.json","prostatex_images.json","prostatex_ktrans.json"]
+  load_update(updateNum,srcfiles,DEFAULT_PROJECT, DATASET,CURRENT_VERSION, LAST_DATASET, LAST_VERSION)
+  checkData()
 
