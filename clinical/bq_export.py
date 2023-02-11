@@ -11,8 +11,8 @@ DEFAULT_PROJECT ='idc-dev-etl'
 DICOM_META='idc-dev-etl.idc_current.dicom_all'
 
 #DEFAULT_PROJECT ='idc-dev'
-CURRENT_VERSION = 'idc_v12'
-LAST_VERSION = 'idc_v11'
+CURRENT_VERSION = 'idc_v13'
+LAST_VERSION = 'idc_v12'
 FINAL_PROJECT='bigquery-public-data'
 
 DATASET=CURRENT_VERSION+'_clinical'
