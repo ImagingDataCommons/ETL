@@ -15,6 +15,7 @@ import pytz
 from datetime import datetime
 import os
 from utils import getHist, read_clin_file, parseIspyDic
+from docx2python import docx2python
 #import copy.deepcopy
 
 ORIGINAL_SRCS_PATH= '/Users/george/fed/actcianable/output/clinical_files/'
@@ -364,7 +365,7 @@ def mergeAcrossBatch(clinJson,coll,ptRowIds,attrSetInd,colsAdded):
   #clinJson[coll]['mergeBatch'][attrSetInd]['headers']['source_batch']=[]
   clinJson[coll]['mergeBatch'][attrSetInd]['headers'][SOURCE_BATCH_COL]=[{'attrs':[SOURCE_BATCH_LABEL]}]
 
-def export_meta_to_json(clinJson,filenm_meta,filenm_summary):
+def export_meta_to_json(clinJson,filenm_meta,filenm_summary,collecs):
 
   hist ={}
   table_id = DEFAULT_PROJECT + "." + LAST_DATASET + '.table_metadata'
@@ -372,7 +373,7 @@ def export_meta_to_json(clinJson,filenm_meta,filenm_summary):
     getHist(hist, table_id)
   metaArr=[]
   sumArr=[]
-  for coll in clinJson:
+  for coll in collecs:
     colldir=coll.replace('/','_').replace(':','_')
     if 'dataset' in clinJson[coll]:
       dataset=clinJson[coll]['dataset']
@@ -496,7 +497,8 @@ def export_meta_to_json(clinJson,filenm_meta,filenm_summary):
             ndic['column']=str(header)
             ndic['data_type']=dftype
             if 'dictinfo' in headerD:
-              ndic['column_label']=headerD['dictinfo']['column_label']
+              if 'column_label' in headerD['dictinfo']:
+                ndic['column_label']=headerD['dictinfo']['column_label']
               if 'data_type' in headerD['dictinfo']:
                 ndic['data_type'] = headerD['dictinfo']['data_type']
 
@@ -783,9 +785,12 @@ def parse_dict(fpath,collec,ndic,indx):
   elif extension == '.xlsb':
     engine = 'pyxlsb'
   df = []
+  dc =[]
   if extension == '.csv':
     df = pd.read_csv(filenm, header=header, skiprows=skipRows,keep_default_na=False)
     sheetnm = ''
+  elif extension == '.docx':
+    dc = docx2python(filenm).document[0][0][0]
   else:
     dfi = pd.read_excel(filenm, engine=engine, sheet_name=None, skiprows=skipRows, header=header,keep_default_na=False)
     sheetnm = list(dfi.keys())[sheetNo]
@@ -841,9 +846,25 @@ def parse_dict(fpath,collec,ndic,indx):
           optJ=json.loads(row['column_counts'].replace('\'','"').replace('False','"False"').replace('True','"True"'))
           for nkey in optJ:
             data_dict[column]['opts'].append({"option_code": nkey})
-
       data_dict[column]['label'] = column_label
 
+  elif (ndic["form"]=="PROSTATEx"):
+    column=''
+    for nxtStr in dc:
+      if re.search("^--\\t", nxtStr):
+        nxtStr = nxtStr.replace("--\t", "")
+        nxtA=[cstr.strip() for cstr in nxtStr.split(chr(8211))]
+        column=formatForBQ([[nxtA[0]]], True)[0]
+        if (len(nxtA)>1):
+          data_dict[column] = {'label':nxtA[1]}
+      elif re.search("^\\t--\\t", nxtStr):
+        nxtStr = nxtStr.replace("\t--\t", "")
+        nxtA = [cstr.strip() for cstr in re.split('-|'+chr(8211),nxtStr)]
+        if not (column in data_dict):
+          data_dict[column]={}
+        if not ('opts' in data_dict[column]):
+          data_dict[column]['opts'] = []
+        data_dict[column]['opts'].append({"option_code": nxtA[0], "option_description": nxtA[1]})
 
 
   btch = collec['mergeBatch'][indx]
@@ -851,7 +872,8 @@ def parse_dict(fpath,collec,ndic,indx):
     if nkey in data_dict:
       btch['headers'][nkey][0]['dictinfo'] = {}
       btch['headers'][nkey][0]['dictinfo']['column'] = nkey
-      btch['headers'][nkey][0]['dictinfo']['column_label'] = data_dict[nkey]['label']
+      if 'label' in data_dict[nkey]:
+        btch['headers'][nkey][0]['dictinfo']['column_label'] = data_dict[nkey]['label']
       if 'opts' in data_dict[nkey]:
         btch['headers'][nkey][0]['dictinfo']['values'] = data_dict[nkey]['opts']
 
@@ -861,12 +883,25 @@ if __name__=="__main__":
     shutil.rmtree(dirpath)
   mkdir(dirpath)
 
+
   #ORIGINAL_SRCS_PATH=sys.argv[1]
 
   clinJson = read_clin_file(NOTES_PATH + 'clinical_notes.json')
   #clinJson = read_clin_file(NOTES_PATH + 'sum.json')
   collec=list(clinJson.keys())
   collec.sort()
+
+  update=False
+  if (len(sys.argv)>1):
+    updateNum=sys.argv[1]
+    selCol=sys.argv[2]
+    update=True
+    if selCol in collec:
+      collec=[selCol]
+    else:
+      collec=[]
+      exit()
+
   client = bigquery.Client()
   query = "select tcia_api_collection_id, tcia_wiki_collection_id, idc_webapp_collection_id from `idc-dev-etl.idc_current.original_collections_metadata` order by `tcia_wiki_collection_id`"
   job = client.query(query)
@@ -899,8 +934,12 @@ if __name__=="__main__":
           ff=1
       pass
 
+
   clin_meta=  CURRENT_VERSION +'_column_metadata.json'
   clin_summary = CURRENT_VERSION +'_table_metadata.json'
-  export_meta_to_json(clinJson,clin_meta,clin_summary)
+  if update:
+    clin_meta = CURRENT_VERSION + '_' + updateNum + '_column_metadata.json'
+    clin_summary = CURRENT_VERSION + '_' + updateNum + '_table_metadata.json'
+  export_meta_to_json(clinJson,clin_meta,clin_summary,collec)
   i=1
 

@@ -81,33 +81,17 @@ def create_meta_summary(project, dataset, cptacColRows):
   table = bigquery.Table(table_id, schema=schema)
   client.create_table(table)
 
-  '''job_config=bigquery.LoadJobConfig(source_format=bigquery.SourceFormat.NEWLINE_DELIMITED_JSON, schema=schema)
-  f=open(filenm,"r")
-  metaD=json.load(f)
-  f.close()
-  #cptacRow = create_table_meta_cptac_row(cptac, dataset_id, CURRENT_VERSION)
-  #cptacRow = addTables
-  metaD.extend(cptacColRows)
-  #del metaD[1]['source_info']
-  job=client.load_table_from_json(metaD, table, job_config=job_config)
-  print(job.result())'''
-
-
 def load_meta_summary(project, dataset, cptacColRows,filenm):
   client = bigquery.Client(project=project)
   dataset_id = project + "." + dataset
   table_id = dataset_id + ".table_metadata"
   table = bigquery.Table(table_id)
-  #filenm = CURRENT_VERSION + "_table_metadata.json"
-
   job_config = bigquery.LoadJobConfig(source_format=bigquery.SourceFormat.NEWLINE_DELIMITED_JSON, write_disposition=bigquery.WriteDisposition.WRITE_APPEND, schema=META_SUM_SCHEMA)
+
   f = open(filenm, "r")
   metaD = json.load(f)
   f.close()
-  # cptacRow = create_table_meta_cptac_row(cptac, dataset_id, CURRENT_VERSION)
-  # cptacRow = addTables
   metaD.extend(cptacColRows)
-  # del metaD[1]['source_info']
   job = client.load_table_from_json(metaD, table, job_config=job_config)
   print(job.result())
 
@@ -311,21 +295,8 @@ def load_all(project,dataset,version,last_dataset, last_version):
   dirnm="./clin_"+CURRENT_VERSION
   load_clin_files(project,dataset,dirnm,None)
 
-def load_update(updateNum,collec,project,dataset,version,last_dataset, last_version, srcfiles):
-  filenm = "./" + CURRENT_VERSION + "_" + updateNum + "table_metadata.json"
-  load_meta_summary(project, dataset, [], filenm)
-
-  filenm = "./" + CURRENT_VERSION + "_" + updateNum +"_column_metadata.json"
-  load_meta(project, dataset, filenm, [])
-
-  dirnm = "./clin_" + CURRENT_VERSION
-  load_clin_files(project, dataset, dirnm, srcfiles)
 
 if __name__=="__main__":
   load_all(DEFAULT_PROJECT, DATASET,CURRENT_VERSION, LAST_DATASET, LAST_VERSION)
-  #load_all(DEFAULT_PROJECT, DATASET,CURRENT_VERSION, LAST_DATASET, LAST_VERSION)
-  #updateNum="1"
-  #srcfiles=["prostatex_findings.json","prostatex_images.json","prostatex_ktrans.json"]
-  #load_update(updateNum,srcfiles,DEFAULT_PROJECT, DATASET,CURRENT_VERSION, LAST_DATASET, LAST_VERSION)
   checkData()
 
