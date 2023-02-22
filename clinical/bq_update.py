@@ -8,12 +8,33 @@ from bq_export import DEFAULT_SUFFIX, DEFAULT_DESCRIPTION, DEFAULT_PROJECT, DICO
 
 from bq_export import load_meta_summary, load_meta, load_clin_files
 
-SRCFILES=["prostatex_findings.json", "prostatex_images.json", "prostatex_ktrans.json"]
+SRCFILES=["prostatex_findings.json", "prostatex_images.json", "prostatex_ktrans.json", "prostatex_findings2.json", "prostatex_images2.json"]
 UPDATENUM="1"
+COLLECS=['prostatex']
+
+def delCollecs(collecs,project, dataset):
+    ncollecs = ["'"+x+"'" for x in collecs]
+    collecStr = ", ".join(ncollecs)
+
+    client = bigquery.Client(project=project)
+    dataset_id=project+"."+dataset
+    table_id= dataset_id+".table_metadata"
+    table = bigquery.Table(table_id)
+    del_sql= f"""delete from """+ table_id +""" where collection_id in ("""+collecStr+""")"""
+    job = client.query(del_sql)
+    print(del_sql)
+
+    table_id2=dataset_id+".column_metadata"
+    del_sql2= f"""delete from """+table_id2+""" where collection_id in ("""+collecStr+""")"""
+    client.query(del_sql2)
+
 
 if __name__=="__main__":
   project = DEFAULT_PROJECT
   dataset = DATASET
+  collecs=COLLECS
+  delCollecs(collecs,project,dataset)
+
   filenm="./" + CURRENT_VERSION + "_" + UPDATENUM + "_table_metadata.json"
   load_meta_summary(project, dataset, [], filenm)
 
