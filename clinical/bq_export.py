@@ -8,11 +8,11 @@ from addcptac import addTables, CPTAC_SRC,TCGA_SRC
 DEFAULT_SUFFIX='clinical'
 DEFAULT_DESCRIPTION='clinical data'
 DEFAULT_PROJECT ='idc-dev-etl'
-DICOM_META='idc-dev-etl.idc_current.dicom_all'
+DICOM_META='idc-dev-etl.idc_v15_pub.dicom_all'
 
 #DEFAULT_PROJECT ='idc-dev'
-CURRENT_VERSION = 'idc_v13'
-LAST_VERSION = 'idc_v12'
+CURRENT_VERSION = 'idc_v15'
+LAST_VERSION = 'idc_v14'
 FINAL_PROJECT='bigquery-public-data'
 
 DATASET=CURRENT_VERSION+'_clinical'
