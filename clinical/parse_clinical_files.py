@@ -585,6 +585,10 @@ def reform_case(case_id, colec,type):
     ret=colec+'-'+case_id.rjust(3,'0')
   elif type == "acrin flt format":
     ret=colec+'_'+case_id.rjust(3,'0')
+  elif type == 'cc':
+    prts=case_id.split('_')
+    prts2=prts[1].split('-')
+    ret=prts[0]+'-'+prts2[0]+prts2[1].rjust(2,'0')
   elif type == "switch dash":
     ret=case_id.replace('_','-')
   elif type == "3DCT-RT":
@@ -781,10 +785,10 @@ def parse_conventional_collection(clinJson,coll):
           suffix = list(clinJson[coll]['tabletypes'][attrSetInd].keys())[0]
         nm = clinJson[coll]['idc_webapp'] + '_' + suffix
         clinJson[coll]['mergeBatch'][attrSetInd]['outfile'] = nm + '.json'
-        try:
-          add_tcia_case_id(clinJson[coll]['mergeBatch'][attrSetInd], clinJson[coll]['tcia_api'], clinJson[coll]['case_id'])
-        except:
-          pass
+        #try:
+        add_tcia_case_id(clinJson[coll]['mergeBatch'][attrSetInd], clinJson[coll]['tcia_api'], clinJson[coll]['case_id'])
+        #except:
+          #pass
         write_dataframe_to_json(DESTINATION_FOLDER, nm, clinJson[coll]['mergeBatch'][attrSetInd]['df'])
 
     '''if not wJson and 'idc_webapp' in clinJson[coll]:
@@ -871,7 +875,12 @@ def parse_dict(fpath,collec,ndic,indx):
     df = pd.read_csv(filenm, header=header, skiprows=skipRows,keep_default_na=False)
     sheetnm = ''
   elif extension == '.docx':
-    dc = docx2python(filenm).document[0][0][0]
+
+    dc = [docx2python(filenm).document[0][0][0]]
+    if ("filenm2" in ndic):
+      filenm2 = fpath + colldir + '/' + ndic["filenm2"]
+      dc.append(docx2python(filenm2).document[0][0][0])
+
   else:
     dfi = pd.read_excel(filenm, engine=engine, sheet_name=None, skiprows=skipRows, header=header,keep_default_na=False)
     if not isinstance(sheetNo, list):
@@ -1022,21 +1031,28 @@ def parse_dict(fpath,collec,ndic,indx):
 
   elif (ndic["form"]=="PROSTATEx"):
     column=''
-    for nxtStr in dc:
-      if re.search("^--\\t", nxtStr):
-        nxtStr = nxtStr.replace("--\t", "")
-        nxtA=[cstr.strip() for cstr in nxtStr.split(chr(8211))]
-        column=formatForBQ([[nxtA[0]]], True)[0]
-        if (len(nxtA)>1):
-          data_dict[column] = {'label':nxtA[1]}
-      elif re.search("^\\t--\\t", nxtStr):
-        nxtStr = nxtStr.replace("\t--\t", "")
-        nxtA = [cstr.strip() for cstr in re.split('-|'+chr(8211),nxtStr)]
-        if not (column in data_dict):
-          data_dict[column]={}
-        if not ('opts' in data_dict[column]):
-          data_dict[column]['opts'] = []
-        data_dict[column]['opts'].append({"option_code": nxtA[0], "option_description": nxtA[1]})
+    for dci in dc:
+      for nxtStr in dci:
+        if re.search("^--\\t", nxtStr):
+          nxtStr = nxtStr.replace("--\t", "")
+          nxtA=[cstr.strip() for cstr in nxtStr.split(chr(8211))]
+          column=formatForBQ([[nxtA[0]]], True)[0]
+          if (len(nxtA)>1):
+            data_dict[column] = {'label':nxtA[1]}
+        elif re.search("^\\t--\\t", nxtStr):
+          nxtStr = nxtStr.replace("\t--\t", "")
+          nxtA = [cstr.strip() for cstr in re.split('-|'+chr(8211),nxtStr)]
+          if not (column in data_dict):
+            data_dict[column]={}
+          if not ('nopts' in data_dict[column]):
+            data_dict[column]['nopts'] = {}
+            data_dict[column]['opts'] =[]
+          if not nxtA[0] in data_dict[column]['nopts']:
+            data_dict[column]['nopts'][nxtA[0]]=1
+            data_dict[column]['opts'].append({"option_code": nxtA[0], "option_description": nxtA[1]})
+    for col in data_dict:
+      if 'nopts' in data_dict[col]:
+        del data_dict[col]['nopts']
 
   elif (ndic["form"]=="nlst"):
     data_dict={}
