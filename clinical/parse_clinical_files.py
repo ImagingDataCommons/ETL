@@ -16,17 +16,18 @@ from datetime import datetime
 import os
 from utils import getHist, read_clin_file, parseIspyDic
 from docx2python import docx2python
+import openpyxl
 #import copy.deepcopy
 
 ORIGINAL_SRCS_PATH= '/Users/george/fed/actcianable/output/clinical_files/'
 NOTES_PATH = '/Users/george/fed/actcianable/output/'
 DEFAULT_SUFFIX='clinical'
 DEFAULT_DESCRIPTION='clinical data'
-DEFAULT_DATASET ='idc_v13_clinical'
+DEFAULT_DATASET ='idc_v15_clinical'
 DEFAULT_PROJECT ='idc-dev-etl'
-CURRENT_VERSION = 'idc_v13'
-LAST_VERSION = 'idc_v12'
-LAST_DATASET = 'idc_v12_clinical'
+CURRENT_VERSION = 'idc_v15'
+LAST_VERSION = 'idc_v14'
+LAST_DATASET = 'idc_v14_clinical'
 DESTINATION_FOLDER='./clin_'+CURRENT_VERSION+'/'
 SOURCE_BATCH_COL='source_batch'
 SOURCE_BATCH_LABEL='idc_provenance_source_batch'
@@ -74,6 +75,7 @@ def write_dataframe_to_json(path,nm,df):
   except:
     pass
   f.close()
+
 
 
 
@@ -142,6 +144,7 @@ def processSrc(fpath, colName, srcInfo):
   df=[]
   if extension == '.csv':
     df = pd.read_csv(filenm, keep_default_na=False)
+    #df = df.head(100)
     sheetnm=''
   else:
     dfi = pd.read_excel(filenm, engine=engine, sheet_name=None, keep_default_na=False)
@@ -168,7 +171,7 @@ def processSrc(fpath, colName, srcInfo):
       values=df.values[ind-1]
     for j in range(len(values)):
       val=values[j]
-      if (i == len(rows)-1) or (not (str(val) == 'nan') and not ('Unnamed:' in str(colVal))):
+      if (i == len(rows)-1) or (not (str(val) == 'nan') and not ('Unnamed:' in str(val))):
         if 'headerformatspec' in srcInfo:
           colVal=specialHeaderFormat(val,srcInfo['headerformatspec'])
         else:
@@ -186,7 +189,13 @@ def processSrc(fpath, colName, srcInfo):
   if -1 in drrows:
     drrows.remove(-1)
   df.drop(df.index[drrows], inplace=True)
-  headers = formatForBQ(attrs,lc=True)
+  headers=[]
+  if 'specAttr' in srcInfo:
+    format=srcInfo['specAttr']
+    newattrs=specialAttrFormat(attrs, format)
+    headers = formatForBQ(newattrs, lc=True)
+  else:
+    headers = formatForBQ(attrs,lc=True)
   df.columns=headers
   df.index=list(df.iloc[:,patientIdRow])
 
@@ -230,12 +239,33 @@ def specialHeaderFormat(val,format):
   return nval
 
 
+def specialAttrFormat(attrs, format):
+  newatts=[]
+  if format == 'duke':
+    for attr_list in attrs:
+      newset=[attr_list[0],attr_list[1]]
+      optCol=attr_list[2]
+      if '{' in optCol:
+        val=optCol.split('{')[0]
+      elif ' (' in optCol:
+        val=optCol.split(' (')[0]
+      elif optCol.startswith('('):
+        val=optCol.split('(')[0]
+      elif '=' in optCol:
+        val=''
+      else:
+        val=optCol
+      newset.append(val)
+      newatts.append(newset)
+  return newatts
+
+
 def formatForBQ(attrs, lc=False):
   patt=re.compile(r"[a-zA-Z_0-9]")
   justNum=re.compile(r"[0-9]")
   headcols=[]
   for i in range(len(attrs)):
-    headSet=attrs[i]
+    headSet=[attrs[i][j] for j in range(len(attrs[i])) if len(attrs[i][j])>0]
     header='_'.join(str(k) for k in headSet)
     header=header.replace('/','_')
     header=header.replace('-', '_')
@@ -248,6 +278,7 @@ def formatForBQ(attrs, lc=False):
       normHeader='c_'+normHeader
     if lc:
       normHeader = normHeader.lower()
+
 
     headcols.append(normHeader)
   return headcols
@@ -554,6 +585,10 @@ def reform_case(case_id, colec,type):
     ret=colec+'-'+case_id.rjust(3,'0')
   elif type == "acrin flt format":
     ret=colec+'_'+case_id.rjust(3,'0')
+  elif type == 'cc':
+    prts=case_id.split('_')
+    prts2=prts[1].split('-')
+    ret=prts[0]+'-'+prts2[0]+prts2[1].rjust(2,'0')
   elif type == "switch dash":
     ret=case_id.replace('_','-')
   elif type == "3DCT-RT":
@@ -701,6 +736,7 @@ def parse_acrin_collection(clinJson,coll):
 
 
 def parse_conventional_collection(clinJson,coll):
+  #clinJson[coll]['idc_webapp']=coll
   colldir = coll.replace('/','_').replace(':','_')
   if 'uzip' in clinJson[coll]:
     zpfile = ORIGINAL_SRCS_PATH + colldir + '/' + clinJson[coll]['uzip']
@@ -749,10 +785,10 @@ def parse_conventional_collection(clinJson,coll):
           suffix = list(clinJson[coll]['tabletypes'][attrSetInd].keys())[0]
         nm = clinJson[coll]['idc_webapp'] + '_' + suffix
         clinJson[coll]['mergeBatch'][attrSetInd]['outfile'] = nm + '.json'
-        try:
-          add_tcia_case_id(clinJson[coll]['mergeBatch'][attrSetInd], clinJson[coll]['tcia_api'], clinJson[coll]['case_id'])
-        except:
-          pass
+        #try:
+        add_tcia_case_id(clinJson[coll]['mergeBatch'][attrSetInd], clinJson[coll]['tcia_api'], clinJson[coll]['case_id'])
+        #except:
+          #pass
         write_dataframe_to_json(DESTINATION_FOLDER, nm, clinJson[coll]['mergeBatch'][attrSetInd]['df'])
 
     '''if not wJson and 'idc_webapp' in clinJson[coll]:
@@ -761,11 +797,60 @@ def parse_conventional_collection(clinJson,coll):
       # analyzeDataFrame(clinJson[coll])
       # write_dataframe_to_json('./clin/',coll,clinJson)'''
 
+def nlst_handler(filenm, sheetNo, data_dict):
+  wb = openpyxl.load_workbook(filename=filenm)
+  ws = wb.worksheets[sheetNo]
+  mxRow = ws.max_row
+  cellBnds = []
+  for rng in ws.merged_cells.ranges:
+    if rng.max_col == 1:
+      cellBnds.append([rng.min_row, rng.max_row])
+
+  cellBnds = sorted(cellBnds, key=lambda x: x[0])
+  nBnds = []
+  mn = cellBnds[0][0]
+  for i in range(2, mn):
+    nBnds.append([i, i])
+  for i in range(0, len(cellBnds) - 1):
+    nBnds.append(cellBnds[i])
+    mn = cellBnds[i][1]
+    mx = cellBnds[i + 1][0]
+    for j in range(mn + 1, mx):
+      nBnds.append([j, j])
+  nBnds.append(cellBnds[len(cellBnds) - 1])
+  mx = cellBnds[len(cellBnds) - 1][1]
+
+  for i in range(mx + 1, mxRow + 1):
+    nBnds.append([i, i])
+  for bnd in nBnds:
+    # for row_ind in range(bnd[0],bnd[1]):
+    column = "".join([str(ws.cell(row=x, column=1).value) for x in range(bnd[0], bnd[1] + 1) if
+                      ws.cell(row=x, column=1).value is not None])
+    column = formatForBQ([[column]], True)[0]
+    column_label = "".join([str(ws.cell(row=x, column=2).value) for x in range(bnd[0], bnd[1] + 1) if
+                            ws.cell(row=x, column=2).value is not None])
+    column_label_add = "".join([str(ws.cell(row=x, column=3).value) for x in range(bnd[0], bnd[1] + 1) if
+                                ws.cell(row=x, column=3).value is not None])
+    if len(column_label_add) > 0:
+      column_label = column_label + ': ' + column_label_add
+    data_dict[column] = {}
+    data_dict[column]['label'] = column_label
+
+    for row_ind in range(bnd[0], bnd[1] + 1):
+      if (ws.cell(row=row_ind, column=4).value is not None) and ('=' in ws.cell(row=row_ind, column=4).value):
+        vals = ws.cell(row=row_ind, column=4).value.split('=')
+        option_code = vals[0].strip('"').strip("'")
+        option_description = vals[1].strip('"').strip("'")
+        if not ('opts' in data_dict[column]):
+          data_dict[column]['opts'] = []
+        data_dict[column]['opts'].append({"option_code": option_code, "option_description": option_description})
+  return
+
 def parse_dict(fpath,collec,ndic,indx):
   data_dict={}
   colldir = coll.replace('/', '_').replace(':', '_')
   filenm=fpath + colldir + '/' +ndic["filenm"]
-  sheetNo="0"
+  sheetNo=0
   if "sheet" in ndic:
     sheetNo=ndic["sheet"]
   skipRows=None
@@ -790,13 +875,102 @@ def parse_dict(fpath,collec,ndic,indx):
     df = pd.read_csv(filenm, header=header, skiprows=skipRows,keep_default_na=False)
     sheetnm = ''
   elif extension == '.docx':
-    dc = docx2python(filenm).document[0][0][0]
+
+    dc = [docx2python(filenm).document[0][0][0]]
+    if ("filenm2" in ndic):
+      filenm2 = fpath + colldir + '/' + ndic["filenm2"]
+      dc.append(docx2python(filenm2).document[0][0][0])
+
   else:
     dfi = pd.read_excel(filenm, engine=engine, sheet_name=None, skiprows=skipRows, header=header,keep_default_na=False)
-    sheetnm = list(dfi.keys())[sheetNo]
-    df = dfi[sheetnm]
+    if not isinstance(sheetNo, list):
+      sheetnm = list(dfi.keys())[sheetNo]
+      df = dfi[sheetnm]
     rr=1
-  if (ndic["form"] =="ispy"):
+  if (ndic["form"] =="adrenal"):
+      for index, row in df.iterrows():
+        column=row['Column Name']
+        column=formatForBQ([[column]],True)[0]
+        label=row['Description']
+        opts=row['Potential Values'].split(',')
+
+        data_dict[column] = {}
+        data_dict[column]['label'] = label
+        if len(opts)>0:
+          data_dict[column]['opts'] = []
+          for opt in opts:
+            nopt=opt.strip()
+            data_dict[column]['opts'].append({"option_code": nopt})
+
+  elif (ndic["form"] =="colorectal"):
+    for index, row in df.iterrows():
+      column = row['Variable Name']
+      column = formatForBQ([[column]], True)[0]
+      label = row['Description']
+      opts = re.split(r"[|,]\s*(?![^()]*\))", row['Values'])
+      #opts = row['Values'].split('|')
+
+      data_dict[column] = {}
+      data_dict[column]['label'] = label
+      if len(opts) > 0:
+        data_dict[column]['opts'] = []
+        for opt in opts:
+          nopt = opt.strip()
+          optA=nopt.split(' - ')
+          optA=[opt.strip() for opt in optA]
+          if len(optA)>1:
+            data_dict[column]['opts'].append({"option_code": optA[0], "option_description":optA[1]})
+          else:
+            data_dict[column]['opts'].append({"option_code": optA[0]})
+
+  elif (ndic["form"]=="duke"):
+    headers =collec['mergeBatch'][0]['headers']
+    for head in headers:
+      if ('attrs' in headers[head][0]) and (len(headers[head][0]['attrs']) == 3):
+        column=head
+        data_dict[column]={}
+        optCol = headers[head][0]['attrs'][2]
+        if optCol.startswith('('):
+          data_dict[column]['label']=optCol
+        else:
+          data_dict[column]['label'] =''
+        if '{' in optCol:
+          optCol = optCol.split('{')[1]
+          optCol=optCol.replace('}','')
+
+        if '=' in optCol:
+          optColA=optCol.split('=')
+
+          if (len(optColA)>1):
+            data_dict[column]['opts'] = []
+            optCode=[optColA[0]]
+            optDesc=[]
+            for k in range(1,len(optColA)-1):
+              nxtset=re.split(r"[;,\n]+\s*",optColA[k],1)
+              if len(nxtset)==2:
+                optDesc.append(nxtset[0])
+                optCode.append(nxtset[1])
+              else:
+                nxtset = re.split(r"\s+", optColA[k], 1)
+                optDesc.append(nxtset[0])
+                optCode.append(nxtset[1])
+            optDesc.append(optColA[len(optColA)-1])
+            #possible optCode and optDesc are switched. code showed be 'shorter' than desc
+            optDescL="".join(optDesc)
+            optCodeL = "".join(optCode)
+            if (len(optCodeL)>len(optDescL)):
+              tmp=[x for x in optDesc]
+              optDesc=[x for x in optCode]
+              optCode=[x for x in tmp]
+
+
+            for k in range(len(optCode)):
+              data_dict[column]['opts'].append({"option_code": optCode[k], "option_description": optDesc[k]})
+        if (len(data_dict[column].keys())==0):
+          del data_dict[column]
+
+
+  elif (ndic["form"] =="ispy"):
     data_dict=parseIspyDic(df)
   elif (ndic["form"]=="ispy2"):
     for index,row in df.iterrows():
@@ -848,26 +1022,49 @@ def parse_dict(fpath,collec,ndic,indx):
             data_dict[column]['opts'].append({"option_code": nkey})
       data_dict[column]['label'] = column_label
 
+  elif (ndic["form"]=="men"):
+    for index, row in df.iterrows():
+      column=row['Field']
+      column_label=row['Definition']
+      data_dict[column] = {}
+      data_dict[column]['label']=column_label
+
   elif (ndic["form"]=="PROSTATEx"):
     column=''
-    for nxtStr in dc:
-      if re.search("^--\\t", nxtStr):
-        nxtStr = nxtStr.replace("--\t", "")
-        nxtA=[cstr.strip() for cstr in nxtStr.split(chr(8211))]
-        column=formatForBQ([[nxtA[0]]], True)[0]
-        if (len(nxtA)>1):
-          data_dict[column] = {'label':nxtA[1]}
-      elif re.search("^\\t--\\t", nxtStr):
-        nxtStr = nxtStr.replace("\t--\t", "")
-        nxtA = [cstr.strip() for cstr in re.split('-|'+chr(8211),nxtStr)]
-        if not (column in data_dict):
-          data_dict[column]={}
-        if not ('opts' in data_dict[column]):
-          data_dict[column]['opts'] = []
-        data_dict[column]['opts'].append({"option_code": nxtA[0], "option_description": nxtA[1]})
+    for dci in dc:
+      for nxtStr in dci:
+        if re.search("^--\\t", nxtStr):
+          nxtStr = nxtStr.replace("--\t", "")
+          nxtA=[cstr.strip() for cstr in nxtStr.split(chr(8211))]
+          column=formatForBQ([[nxtA[0]]], True)[0]
+          if (len(nxtA)>1):
+            data_dict[column] = {'label':nxtA[1]}
+        elif re.search("^\\t--\\t", nxtStr):
+          nxtStr = nxtStr.replace("\t--\t", "")
+          nxtA = [cstr.strip() for cstr in re.split('-|'+chr(8211),nxtStr)]
+          if not (column in data_dict):
+            data_dict[column]={}
+          if not ('nopts' in data_dict[column]):
+            data_dict[column]['nopts'] = {}
+            data_dict[column]['opts'] =[]
+          if not nxtA[0] in data_dict[column]['nopts']:
+            data_dict[column]['nopts'][nxtA[0]]=1
+            data_dict[column]['opts'].append({"option_code": nxtA[0], "option_description": nxtA[1]})
+    for col in data_dict:
+      if 'nopts' in data_dict[col]:
+        del data_dict[col]['nopts']
 
+  elif (ndic["form"]=="nlst"):
+    data_dict={}
+    nlst_handler(filenm, sheetNo, data_dict)
+
+  elif (ndic["form"]=="nlst2"):
+    data_dict={}
+    for num in sheetNo:
+      nlst_handler(filenm, num, data_dict)
 
   btch = collec['mergeBatch'][indx]
+
   for nkey in btch['headers']:
     if nkey in data_dict:
       btch['headers'][nkey][0]['dictinfo'] = {}
@@ -876,6 +1073,7 @@ def parse_dict(fpath,collec,ndic,indx):
         btch['headers'][nkey][0]['dictinfo']['column_label'] = data_dict[nkey]['label']
       if 'opts' in data_dict[nkey]:
         btch['headers'][nkey][0]['dictinfo']['values'] = data_dict[nkey]['opts']
+
 
 if __name__=="__main__":
   dirpath = Path(DESTINATION_FOLDER)
@@ -887,7 +1085,7 @@ if __name__=="__main__":
   #ORIGINAL_SRCS_PATH=sys.argv[1]
 
   clinJson = read_clin_file(NOTES_PATH + 'clinical_notes.json')
-  #clinJson = read_clin_file(NOTES_PATH + 'sum.json')
+  #clinJson = read_clin_file(NOTES_PATH + 'notes.json')
   collec=list(clinJson.keys())
   collec.sort()
 
@@ -925,12 +1123,16 @@ if __name__=="__main__":
       elif clinJson[coll]['spec'] == 'acrin':
         parse_acrin_collection(clinJson,coll)
     else:
+      print("about to parse "+coll)
       parse_conventional_collection(clinJson, coll)
       if "dict" in clinJson[coll]:
         for indx in range(len(clinJson[coll]["dict"])):
           ndic=clinJson[coll]["dict"][indx]
           if ("use" in ndic) and ndic:
+
             parse_dict(ORIGINAL_SRCS_PATH,clinJson[coll],ndic,indx)
+
+
           ff=1
       pass
 
