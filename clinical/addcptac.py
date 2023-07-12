@@ -10,12 +10,12 @@ DEFAULT_DESCRIPTION="clinical data"
 CPTAC_SRC='isb-cgc-bq.CPTAC_versioned.clinical_gdc_r31'
 NLST='idc-dev-etl.idc_current'
 NLST_SRCA=['nlst_canc','nlst_ctab','nlst_ctabc','nlst_prsn','nlst_screen']
-IDC_VERSION='idc_v12'
-IDC_VERSION_LAST='idc_v11'
+IDC_VERSION='idc_v15'
+IDC_VERSION_LAST='idc_v14'
 TCGA_SRC='idc-dev-etl.'+IDC_VERSION+'_pub.tcga_clinical_rel9'
 
-IDC_COLLECTION_ID_SRC='`idc-dev-etl.idc_current.original_collections_metadata`'
-IDC_PATIENT_ID_SRC='`idc-dev-etl.idc_current.dicom_all`'
+IDC_COLLECTION_ID_SRC='`idc-dev-etl.idc_v15_pub.original_collections_metadata`'
+IDC_PATIENT_ID_SRC='`idc-dev-etl.idc_v15_pub.dicom_all`'
 
 
 SOURCE_BATCH_COL='source_batch'
