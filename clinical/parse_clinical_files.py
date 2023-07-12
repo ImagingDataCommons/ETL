@@ -144,7 +144,7 @@ def processSrc(fpath, colName, srcInfo):
   df=[]
   if extension == '.csv':
     df = pd.read_csv(filenm, keep_default_na=False)
-    df = df.head(100)
+    #df = df.head(100)
     sheetnm=''
   else:
     dfi = pd.read_excel(filenm, engine=engine, sheet_name=None, keep_default_na=False)
