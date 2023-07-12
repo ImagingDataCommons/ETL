@@ -833,17 +833,31 @@ def nlst_handler(filenm, sheetNo, data_dict):
                                 ws.cell(row=x, column=3).value is not None])
     if len(column_label_add) > 0:
       column_label = column_label + ': ' + column_label_add
-    data_dict[column] = {}
-    data_dict[column]['label'] = column_label
 
-    for row_ind in range(bnd[0], bnd[1] + 1):
-      if (ws.cell(row=row_ind, column=4).value is not None) and ('=' in ws.cell(row=row_ind, column=4).value):
-        vals = ws.cell(row=row_ind, column=4).value.split('=')
-        option_code = vals[0].strip('"').strip("'")
-        option_description = vals[1].strip('"').strip("'")
-        if not ('opts' in data_dict[column]):
-          data_dict[column]['opts'] = []
-        data_dict[column]['opts'].append({"option_code": option_code, "option_description": option_description})
+    cols=[]
+    mtch=re.search('[0-9]-[0-9]$',column)
+    if mtch is None:
+      cols=[column]
+    else:
+      mtchStr=mtch.group(0)
+      croot=re.sub(mtchStr+'$','', column)
+      strt=int(mtchStr[0])
+      end=int(mtchStr[2])
+      for j in range(strt,end+1):
+        cols.append(croot+str(j))
+
+    for column in cols:
+      data_dict[column] = {}
+      data_dict[column]['label'] = column_label
+
+      for row_ind in range(bnd[0], bnd[1] + 1):
+        if (ws.cell(row=row_ind, column=4).value is not None) and ('=' in ws.cell(row=row_ind, column=4).value):
+          vals = ws.cell(row=row_ind, column=4).value.split('=')
+          option_code = vals[0].strip('"').strip("'")
+          option_description = vals[1].strip('"').strip("'")
+          if not ('opts' in data_dict[column]):
+            data_dict[column]['opts'] = []
+          data_dict[column]['opts'].append({"option_code": option_code, "option_description": option_description})
   return
 
 def parse_dict(fpath,collec,ndic,indx):
