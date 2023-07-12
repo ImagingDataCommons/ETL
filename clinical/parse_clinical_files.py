@@ -144,7 +144,7 @@ def processSrc(fpath, colName, srcInfo):
   df=[]
   if extension == '.csv':
     df = pd.read_csv(filenm, keep_default_na=False)
-    #df = df.head(100)
+    df = df.head(100)
     sheetnm=''
   else:
     dfi = pd.read_excel(filenm, engine=engine, sheet_name=None, keep_default_na=False)
@@ -826,6 +826,7 @@ def nlst_handler(filenm, sheetNo, data_dict):
     # for row_ind in range(bnd[0],bnd[1]):
     column = "".join([str(ws.cell(row=x, column=1).value) for x in range(bnd[0], bnd[1] + 1) if
                       ws.cell(row=x, column=1).value is not None])
+    col_orig=column
     column = formatForBQ([[column]], True)[0]
     column_label = "".join([str(ws.cell(row=x, column=2).value) for x in range(bnd[0], bnd[1] + 1) if
                             ws.cell(row=x, column=2).value is not None])
@@ -835,12 +836,12 @@ def nlst_handler(filenm, sheetNo, data_dict):
       column_label = column_label + ': ' + column_label_add
 
     cols=[]
-    mtch=re.search('[0-9]-[0-9]$',column)
+    mtch=re.search('[0-9]-[0-9]$',col_orig)
     if mtch is None:
       cols=[column]
     else:
       mtchStr=mtch.group(0)
-      croot=re.sub(mtchStr+'$','', column)
+      croot=column[:len(column)-3]
       strt=int(mtchStr[0])
       end=int(mtchStr[2])
       for j in range(strt,end+1):
