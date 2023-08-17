@@ -4,18 +4,24 @@ from datetime import datetime,date
 from utils import getHist, read_clin_file
 import pytz
 
+DEFAULT_PROJECT ='idc-dev-etl'
 DEFAULT_SUFFIX="clinical"
 DEFAULT_DESCRIPTION="clinical data"
 
+HTAN_SRCS=['isb-cgc-bq.HTAN.clinical_tier1_demographics_current','isb-cgc-bq.HTAN.clinical_tier1_diagnosis_current',
+           'isb-cgc-bq.HTAN.clinical_tier1_exposure_current','isb-cgc-bq.HTAN.clinical_tier1_familyhistory_current',
+           'isb-cgc-bq.HTAN.clinical_tier1_followup_current','isb-cgc-bq.HTAN.clinical_tier1_moleculartest_current',
+           'isb-cgc-bq.HTAN.clinical_tier1_therapy_current']
+HTAN_TABLES=['demographics','diagnosis','exposure','familyhistory','followup','moleculartest','therapy']
 CPTAC_SRC='isb-cgc-bq.CPTAC_versioned.clinical_gdc_r31'
 NLST='idc-dev-etl.idc_current'
 NLST_SRCA=['nlst_canc','nlst_ctab','nlst_ctabc','nlst_prsn','nlst_screen']
-IDC_VERSION='idc_v15'
-IDC_VERSION_LAST='idc_v14'
+IDC_VERSION='idc_v16'
+IDC_VERSION_LAST='idc_v15'
 TCGA_SRC='idc-dev-etl.'+IDC_VERSION+'_pub.tcga_clinical_rel9'
 
-IDC_COLLECTION_ID_SRC='`idc-dev-etl.idc_v15_pub.original_collections_metadata`'
-IDC_PATIENT_ID_SRC='`idc-dev-etl.idc_v15_pub.dicom_all`'
+IDC_COLLECTION_ID_SRC='`idc-dev-etl.idc_v16_pub.original_collections_metadata`'
+IDC_PATIENT_ID_SRC='`idc-dev-etl.idc_v16_pub.dicom_all`'
 
 
 SOURCE_BATCH_COL='source_batch'
@@ -141,7 +147,7 @@ def copy_table(dataset_id, table_name, lst, src_table_id, id_col, intIds):
   if table_name is None:
     table_name="cptac_clinical"
   #src_table_id = CPTAC_SRC
-  client = bigquery.Client()
+  client = bigquery.Client(project=DEFAULT_PROJECT)
   src_table = client.get_table(src_table_id)
   nschema=[bigquery.SchemaField("dicom_patient_id","STRING"),
           bigquery.SchemaField("source_batch","INTEGER")]
@@ -175,7 +181,7 @@ def copy_table(dataset_id, table_name, lst, src_table_id, id_col, intIds):
 
 def get_ids(program,collection):
   cptac=[]
-  client = bigquery.Client()
+  client = bigquery.Client(project=DEFAULT_PROJECT)
   query = "select distinct t1.idc_webapp_collection_id, PatientID from "+IDC_COLLECTION_ID_SRC+" t1,"+IDC_PATIENT_ID_SRC+" t2 where "
   if (program is not None):
     query = query + "Program = '"+ program +"' and "
@@ -200,24 +206,29 @@ def get_ids(program,collection):
 
   return cptacDic
 
-def addTables(proj_id, dataset_id, version,program,collection,subscript,table_src, id_col,intIds,dataset_id_lst,version_lst):
+def addTables(proj_id, dataset_id, version,program,collection,subscripts,table_srcs, id_col,intIds,dataset_id_lst,version_lst):
   nrows=[]
   colrows=[]
-  cptac = get_ids(program, collection)
+  collec_id_mp = get_ids(program, collection)
   dataset_id = proj_id + "." + dataset_id
   dataset_id_lst = proj_id + "." + dataset_id_lst
-  for collec in cptac:
-    table_name = collec + "_" + subscript
-    numr = copy_table(dataset_id, table_name, cptac[collec],table_src, id_col, intIds)
-    if numr > 0:
-      table_src_rec=table_src
-      nrows.extend(create_table_meta_row(collec, table_name, dataset_id, version,table_src, table_src_rec,dataset_id_lst,version_lst))
-      colrows.extend(create_column_meta_rows(collec, table_name, dataset_id))
+  for collec in collec_id_mp:
+    for i in range(len(table_srcs)):
+      table_src=table_srcs[i]
+      subscript=subscripts[i]
+      table_name = collec + "_" + subscript
+      numr = copy_table(dataset_id, table_name, collec_id_mp[collec],table_src, id_col, intIds)
+      if numr > 0:
+        table_src_rec=table_src
+        nrows.extend(create_table_meta_row(collec, table_name, dataset_id, version,table_src, table_src_rec,dataset_id_lst,version_lst))
+        colrows.extend(create_column_meta_rows(collec, table_name, dataset_id))
   return([nrows,colrows])
 
 if __name__=="__main__":
-  #ret=addTables("idc-dev","idc_v11_clinical","idc_v11","CPTAC",None,"clinical",CPTAC_SRC,"submitter_id", False)
-  #ret=addTables("idc-dev","idc_v11_clinical","idc_v11","TCGA",None,"clinical",TCGA_SRC,"case_barcode", False)
+  #ret=addTables("idc-dev","idc_v11_clinical","idc_v11","CPTAC",None,["clinical"],[CPTAC_SRC],"submitter_id", False)
+  #get_ids('HTAN',None)
+  #ret=addTables("idc-dev","idc_v11_clinical","idc_v11","TCGA",None,["clinical"],[TCGA_SRC],"case_barcode", False)
+  ret = addTables("idc-dev", "idc_v16_clinical", "idc_v16", "HTAN", None, HTAN_TABLES, HTAN_SRCS, "HTAN_Participant_ID",False,'idc-dev-etl.v15_current','v15')
   '''for colec in NLST_SRCA:
     sufx=colec.split('_')[1].lower()
     src=NLST+'.'+colec

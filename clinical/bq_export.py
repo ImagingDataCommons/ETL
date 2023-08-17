@@ -3,16 +3,17 @@ import json
 from os import listdir
 from os.path import isfile,join,splitext
 import sys
-from addcptac import addTables, CPTAC_SRC,TCGA_SRC
+from addcptac import addTables, CPTAC_SRC,TCGA_SRC,HTAN_SRCS,HTAN_TABLES
 
 DEFAULT_SUFFIX='clinical'
 DEFAULT_DESCRIPTION='clinical data'
 DEFAULT_PROJECT ='idc-dev-etl'
-DICOM_META='idc-dev-etl.idc_v15_pub.dicom_all'
+#DEFAULT_PROJECT ='idc-dev'
+DICOM_META='idc-dev-etl.idc_v16_pub.dicom_all'
 
 #DEFAULT_PROJECT ='idc-dev'
-CURRENT_VERSION = 'idc_v15'
-LAST_VERSION = 'idc_v14'
+CURRENT_VERSION = 'idc_v16'
+LAST_VERSION = 'idc_v15'
 FINAL_PROJECT='bigquery-public-data'
 
 DATASET=CURRENT_VERSION+'_clinical'
@@ -278,11 +279,18 @@ def load_all(project,dataset,version,last_dataset, last_version):
   client.delete_dataset(dataset_id, delete_contents=True, not_found_ok=True)
   ds = client.create_dataset(dataset_id)
 
-  cptac=addTables(project, dataset, version, "CPTAC", None, "clinical", CPTAC_SRC, "submitter_id", False, last_dataset, last_version)
-  tcga=addTables(project, dataset, version, "TCGA", None, "clinical", TCGA_SRC, "case_barcode", False, last_dataset, last_version)
 
-  bqSrcMetaTbl = cptac[0]+tcga[0]
-  bqSrcMetaCol = cptac[1]+tcga[1]
+
+  htan = addTables(project,dataset,version, "HTAN", None, HTAN_TABLES, HTAN_SRCS, "HTAN_Participant_ID",False, last_dataset, last_version)
+
+  cptac = addTables(project, dataset, version, "CPTAC", None, ["clinical"], [CPTAC_SRC], "submitter_id", False, last_dataset, last_version)
+  tcga = addTables(project, dataset, version, "TCGA", None, ["clinical"], [TCGA_SRC], "case_barcode", False, last_dataset, last_version)
+
+  bqSrcMetaTbl = htan[0]+cptac[0]+tcga[0]
+  bqSrcMetaCol = htan[1]+cptac[1]+tcga[1]
+
+  #bqSrcMetaTbl = []
+  #bqSrcMetaCol = []
 
   create_meta_summary(project, dataset, bqSrcMetaTbl)
   create_meta_table(project, dataset)

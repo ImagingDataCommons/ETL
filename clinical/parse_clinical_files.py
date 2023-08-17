@@ -23,11 +23,11 @@ ORIGINAL_SRCS_PATH= '/Users/george/fed/actcianable/output/clinical_files/'
 NOTES_PATH = '/Users/george/fed/actcianable/output/'
 DEFAULT_SUFFIX='clinical'
 DEFAULT_DESCRIPTION='clinical data'
-DEFAULT_DATASET ='idc_v15_clinical'
+DEFAULT_DATASET ='idc_v16_clinical'
 DEFAULT_PROJECT ='idc-dev-etl'
-CURRENT_VERSION = 'idc_v15'
-LAST_VERSION = 'idc_v14'
-LAST_DATASET = 'idc_v14_clinical'
+CURRENT_VERSION = 'idc_v16'
+LAST_VERSION = 'idc_v15'
+LAST_DATASET = 'idc_v15_clinical'
 DESTINATION_FOLDER='./clin_'+CURRENT_VERSION+'/'
 SOURCE_BATCH_COL='source_batch'
 SOURCE_BATCH_LABEL='idc_provenance_source_batch'
@@ -1100,7 +1100,7 @@ if __name__=="__main__":
   #ORIGINAL_SRCS_PATH=sys.argv[1]
 
   clinJson = read_clin_file(NOTES_PATH + 'clinical_notes.json')
-  #clinJson = read_clin_file(NOTES_PATH + 'notes.json')
+  #clinJson = read_clin_file(NOTES_PATH + 'notes_test.json')
   collec=list(clinJson.keys())
   collec.sort()
 
