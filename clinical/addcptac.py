@@ -40,7 +40,7 @@ def json_serial(obj):
     raise TypeError ("Type %s not serializable" % type(obj))
 
 
-def create_table_meta_row(collec,table_name,dataset_id,version,src_table_id, table_src_rec, dataset_id_lst,version_lst):
+def create_table_meta_row(collec,table_name,dataset_id,version,src_table_id, table_src_rec, dataset_id_lst,version_lst,tbltype):
   full_table_name = FINAL_PROJ + IDC_VERSION + '_clinical.' + table_name
   client = bigquery.Client()
   src_table = client.get_table(src_table_id)
@@ -57,12 +57,12 @@ def create_table_meta_row(collec,table_name,dataset_id,version,src_table_id, tab
   #for coll in cptac:
   sumDic = {}
   suffix = DEFAULT_SUFFIX
-  table_description = DEFAULT_DESCRIPTION
+  table_description = tbltype
   #collection_id = str(cptac)
   #table_name = 'cptac_clinical'
   sumDic['collection_id'] = collec
   sumDic['table_name'] = full_table_name
-  sumDic['table_description'] = 'clinical_data'
+  sumDic['table_description'] = table_description
   sumDic['source_info']=[]
   sumDic['source_info'].append({})
   sumDic['source_info'][0]['table_last_modified']=table_last_modified
@@ -206,7 +206,7 @@ def get_ids(program,collection):
 
   return cptacDic
 
-def addTables(proj_id, dataset_id, version,program,collection,subscripts,table_srcs, id_col,intIds,dataset_id_lst,version_lst):
+def addTables(proj_id, dataset_id, version,program,collection,types,table_srcs, id_col,intIds,dataset_id_lst,version_lst):
   nrows=[]
   colrows=[]
   collec_id_mp = get_ids(program, collection)
@@ -215,12 +215,12 @@ def addTables(proj_id, dataset_id, version,program,collection,subscripts,table_s
   for collec in collec_id_mp:
     for i in range(len(table_srcs)):
       table_src=table_srcs[i]
-      subscript=subscripts[i]
-      table_name = collec + "_" + subscript
+      tbltype=types[i]
+      table_name = collec + "_" + tbltype
       numr = copy_table(dataset_id, table_name, collec_id_mp[collec],table_src, id_col, intIds)
       if numr > 0:
         table_src_rec=table_src
-        nrows.extend(create_table_meta_row(collec, table_name, dataset_id, version,table_src, table_src_rec,dataset_id_lst,version_lst))
+        nrows.extend(create_table_meta_row(collec, table_name, dataset_id, version,table_src, table_src_rec,dataset_id_lst,version_lst,tbltype))
         colrows.extend(create_column_meta_rows(collec, table_name, dataset_id))
   return([nrows,colrows])
 
