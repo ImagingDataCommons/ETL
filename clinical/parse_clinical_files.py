@@ -1092,10 +1092,6 @@ def parse_dict(fpath,collec,ndic,indx):
 
 if __name__=="__main__":
   dirpath = Path(DESTINATION_FOLDER)
-  if dirpath.exists() and dirpath.is_dir():
-    shutil.rmtree(dirpath)
-  mkdir(dirpath)
-
 
   #ORIGINAL_SRCS_PATH=sys.argv[1]
 
@@ -1114,6 +1110,10 @@ if __name__=="__main__":
     else:
       collec=[]
       exit()
+  else:
+    if dirpath.exists() and dirpath.is_dir():
+      shutil.rmtree(dirpath)
+    mkdir(dirpath)
 
   client = bigquery.Client()
   query = "select tcia_api_collection_id, tcia_wiki_collection_id, idc_webapp_collection_id from `idc-dev-etl.idc_current.original_collections_metadata` order by `tcia_wiki_collection_id`"
