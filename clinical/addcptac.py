@@ -16,12 +16,12 @@ HTAN_TABLES=['demographics','diagnosis','exposure','familyhistory','followup','m
 CPTAC_SRC='isb-cgc-bq.CPTAC_versioned.clinical_gdc_r31'
 NLST='idc-dev-etl.idc_current'
 NLST_SRCA=['nlst_canc','nlst_ctab','nlst_ctabc','nlst_prsn','nlst_screen']
-IDC_VERSION='idc_v16'
-IDC_VERSION_LAST='idc_v15'
+IDC_VERSION='idc_v17'
+IDC_VERSION_LAST='idc_v16'
 TCGA_SRC='idc-dev-etl.'+IDC_VERSION+'_pub.tcga_clinical_rel9'
 
-IDC_COLLECTION_ID_SRC='`idc-dev-etl.idc_v16_pub.original_collections_metadata`'
-IDC_PATIENT_ID_SRC='`idc-dev-etl.idc_v16_pub.dicom_all`'
+IDC_COLLECTION_ID_SRC='`idc-dev-etl.idc_v17_pub.original_collections_metadata`'
+IDC_PATIENT_ID_SRC='`idc-dev-etl.idc_v17_pub.dicom_all`'
 
 
 SOURCE_BATCH_COL='source_batch'
@@ -110,7 +110,6 @@ def create_column_meta_rows(collec, table_name,dataset_id):
     else:
       curRec['case_col']=False
     curRec['table_name']=full_table_name
-
     curRec['column'] = nm
     
     if nm == SOURCE_BATCH_COL:
