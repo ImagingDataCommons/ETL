@@ -23,11 +23,11 @@ ORIGINAL_SRCS_PATH= '/Users/george/fed/actcianable/output/clinical_files/'
 NOTES_PATH = '/Users/george/fed/actcianable/output/'
 DEFAULT_SUFFIX='clinical'
 DEFAULT_DESCRIPTION='clinical data'
-DEFAULT_DATASET ='idc_v16_clinical'
+DEFAULT_DATASET ='idc_v17_clinical'
 DEFAULT_PROJECT ='idc-dev-etl'
-CURRENT_VERSION = 'idc_v16'
-LAST_VERSION = 'idc_v15'
-LAST_DATASET = 'idc_v15_clinical'
+CURRENT_VERSION = 'idc_v17'
+LAST_VERSION = 'idc_v16'
+LAST_DATASET = 'idc_v16_clinical'
 DESTINATION_FOLDER='./clin_'+CURRENT_VERSION+'/'
 SOURCE_BATCH_COL='source_batch'
 SOURCE_BATCH_LABEL='idc_provenance_source_batch'
@@ -601,6 +601,10 @@ def reform_case(case_id, colec,type):
     ret = "Lung_Dx-"+case_id
   elif type=='add colec':
     ret=colec+'-'+case_id
+  elif type=='remind':
+    ret='ReMIND-'+case_id
+  elif type=='ea1141':
+    ret='EA1141-'+case_id
   return ret
 
 def add_tcia_case_id(mergeB, tcia_coll,type):
@@ -785,10 +789,11 @@ def parse_conventional_collection(clinJson,coll):
           suffix = list(clinJson[coll]['tabletypes'][attrSetInd].keys())[0]
         nm = clinJson[coll]['idc_webapp'] + '_' + suffix
         clinJson[coll]['mergeBatch'][attrSetInd]['outfile'] = nm + '.json'
-        #try:
-        add_tcia_case_id(clinJson[coll]['mergeBatch'][attrSetInd], clinJson[coll]['tcia_api'], clinJson[coll]['case_id'])
-        #except:
-          #pass
+        try:
+          add_tcia_case_id(clinJson[coll]['mergeBatch'][attrSetInd], clinJson[coll]['tcia_api'], clinJson[coll]['case_id'])
+        except:
+          sdf=1
+          pass
         write_dataframe_to_json(DESTINATION_FOLDER, nm, clinJson[coll]['mergeBatch'][attrSetInd]['df'])
 
     '''if not wJson and 'idc_webapp' in clinJson[coll]:
@@ -861,7 +866,7 @@ def nlst_handler(filenm, sheetNo, data_dict):
           data_dict[column]['opts'].append({"option_code": option_code, "option_description": option_description})
   return
 
-def parse_dict(fpath,collec,ndic,indx):
+def parse_dict(fpath,collec,ndic,indx,coll):
   data_dict={}
   colldir = coll.replace('/', '_').replace(':', '_')
   filenm=fpath + colldir + '/' +ndic["filenm"]
@@ -1078,6 +1083,42 @@ def parse_dict(fpath,collec,ndic,indx):
     for num in sheetNo:
       nlst_handler(filenm, num, data_dict)
 
+  elif (ndic["form"]=="ea1141"):
+    colSet = set()
+    headers = collec['mergeBatch'][0]['headers']
+    for head in headers:
+      if ('attrs' in headers[head][0]):
+        col=headers[head][0]['attrs'][0]
+        colSet.add(col)
+
+    column=''
+    for index, row in df.iterrows():
+      if (row[0] in colSet):
+        column = formatForBQ([[row[0]]], True)[0]
+        description=row[1]
+        data_dict[column] = {}
+        data_dict[column]['label'] = description
+        data_dict[column]['opts'] = []
+      elif (len(row[0])>0):
+        column=''
+      if len(column)>0:
+        if len(row[2])>0 and ("=" in row[2]):
+          optA=row[2].split('\n')
+          for optS in optA:
+            if ("=" in optS):
+              opts=optS.split("=")
+              data_dict[column]['opts'].append({"option_code": opts[0], "option_description": opts[1]})
+    for column in data_dict:
+      if ('opts' in data_dict[column]) and (len(data_dict[column]['opts'])==0):
+        del data_dict[column]['opts']
+
+  elif (ndic["form"]=="remind"):
+    for index, row in df.iterrows():
+      column = formatForBQ([[row[0]]], True)[0]
+      data_dict[column]={}
+      data_dict[column]['label'] = row[1]
+
+
   btch = collec['mergeBatch'][indx]
 
   for nkey in btch['headers']:
@@ -1096,7 +1137,7 @@ if __name__=="__main__":
   #ORIGINAL_SRCS_PATH=sys.argv[1]
 
   clinJson = read_clin_file(NOTES_PATH + 'clinical_notes.json')
-  #clinJson = read_clin_file(NOTES_PATH + 'notes_test.json')
+  #clinJson = read_clin_file(NOTES_PATH + 'clin.json')
   collec=list(clinJson.keys())
   collec.sort()
 
@@ -1144,13 +1185,9 @@ if __name__=="__main__":
         for indx in range(len(clinJson[coll]["dict"])):
           ndic=clinJson[coll]["dict"][indx]
           if ("use" in ndic) and ndic:
-
-            parse_dict(ORIGINAL_SRCS_PATH,clinJson[coll],ndic,indx)
-
-
+            parse_dict(ORIGINAL_SRCS_PATH,clinJson[coll],ndic,indx,coll)
           ff=1
       pass
-
 
   clin_meta=  CURRENT_VERSION +'_column_metadata.json'
   clin_summary = CURRENT_VERSION +'_table_metadata.json'
