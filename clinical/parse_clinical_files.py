@@ -602,7 +602,7 @@ def reform_case(case_id, colec,type):
   elif type=='add colec':
     ret=colec+'-'+case_id
   elif type=='remind':
-    ret='ReMIND-'+case_id
+    ret='ReMIND-'+case_id.zfill(3)
   elif type=='ea1141':
     ret='EA1141-'+case_id
   return ret
@@ -756,16 +756,9 @@ def parse_conventional_collection(clinJson,coll):
       for batchSetInd in range(len(clinJson[coll]['srcs'][attrSetInd])):
         clinJson[coll]['cols'][attrSetInd].append([])
         clinJson[coll]['cols'][attrSetInd][batchSetInd] = {}
-        try:
-          srcInfo = clinJson[coll]['srcs'][attrSetInd][batchSetInd]
-        except:
-          lll=1
-        try:
-          patientIdRow = (0 if not ('patientIdRow') in srcInfo else srcInfo['patientIdRow'])
-        except:
-          lll=1
-          pass
-        ptRowIds.append(patientIdRow)
+        srcInfo = clinJson[coll]['srcs'][attrSetInd][batchSetInd]
+
+
         #print("strcInfo " + str(srcInfo))
         if not ('type' in srcInfo) or not (srcInfo['type'] == 'json'):
           [headers, df, sheetnm] = processSrc(ORIGINAL_SRCS_PATH, colldir, srcInfo)
@@ -778,6 +771,14 @@ def parse_conventional_collection(clinJson,coll):
           clinJson[coll]['cols'][attrSetInd][batchSetInd]['df'] = df
         else:
           wJson = True
+
+        patientIdRow=0
+        if 'patientIdRow' in srcInfo:
+          patientIdRow=srcInfo['patientIdRow']
+        elif 'patientIdCol' in srcInfo:
+          patientIdRow=headers[srcInfo['patientIdCol']]['colNo']
+        ptRowIds.append(patientIdRow)
+
       if not wJson and 'idc_webapp' in clinJson[coll]:
         colsAdded=1
         mergeAcrossBatch(clinJson, coll, ptRowIds, attrSetInd, colsAdded)
