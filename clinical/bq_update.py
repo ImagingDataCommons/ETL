@@ -8,9 +8,9 @@ from bq_export import DEFAULT_SUFFIX, DEFAULT_DESCRIPTION, DEFAULT_PROJECT, DICO
 
 from bq_export import load_meta_summary, load_meta, load_clin_files
 
-SRCFILES=["prostatex_findings.json", "prostatex_images.json", "prostatex_ktrans.json", "prostatex_findings2.json", "prostatex_images2.json"]
+SRCFILES=["rms_mutation_prediction_demographics.json", "rms_mutation_prediction_diagnosis.json", "rms_mutation_prediction_sample.json"]
 UPDATENUM="1"
-COLLECS=['prostatex']
+COLLECS=['rms_mutation_prediction']
 
 def delCollecs(collecs,project, dataset):
     ncollecs = ["'"+x+"'" for x in collecs]
